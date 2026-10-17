@@ -8,11 +8,13 @@ class LearnOverview extends StatefulWidget {
   const LearnOverview({
     super.key,
     required this.history,
+    required this.examsPassed,
     required this.lessons,
     required this.onPractice,
     required this.dark,
   });
   final ProgressHistory history;
+  final int examsPassed;
   final List<(String, String, String)> lessons;
   final void Function(PracticeMode mode, String characters) onPractice;
   final bool dark;
@@ -128,6 +130,12 @@ class _LearnOverviewState extends State<LearnOverview> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 14),
+              metric(
+                'Exams passed',
+                '${widget.examsPassed}',
+                key: const ValueKey('learn-exams-passed'),
               ),
             ],
           ),

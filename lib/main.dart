@@ -111,6 +111,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   int page = 1, pace = 1, attempts = 0, correct = 0;
   final learned = <String>{};
   ProgressHistory history = ProgressHistory();
+  int examsPassed = 0;
   int sessionAttempts = 0, sessionCorrect = 0, sessionSerial = 0;
   String sessionId = DateTime.now().microsecondsSinceEpoch.toString();
   String sequence = '',
@@ -127,6 +128,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   String examStatus = '';
   List<PracticeMode> examModes = [];
   _SavedExam? _savedExam;
+  String? _shownPassedExamSession;
   PracticeMode practiceMode = PracticeMode.send;
   bool get examSelected => group == '@exam';
   bool get examRunning => examSelected && examStatus.isEmpty;
@@ -178,6 +180,11 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         final loaded = ProgressHistory.fromSaved(data);
         loaded.merge(history.records);
         history = loaded;
+        examsPassed =
+            (data['examsPassed'] is int ? data['examsPassed'] as int : 0).clamp(
+              0,
+              1 << 31,
+            );
         attempts = history.totalAttempts;
         correct = history.totalCorrect;
         learned
@@ -215,6 +222,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         'correct': correct,
         'learned': learned.toList(),
         'progress': history.toJson(),
+        'examsPassed': examsPassed,
         'savedExam': _savedExam?.toJson(),
       }),
     );
@@ -1872,7 +1880,34 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     if (isCorrect) {
       if (examQuestion == 20) {
         examStatus = 'passed';
+        examsPassed++;
         result = 'exam-passed';
+        final passedSession = sessionId;
+        if (_shownPassedExamSession != passedSession) {
+          _shownPassedExamSession = passedSession;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final dialogContext = scaffold.currentContext;
+            if (!mounted ||
+                sessionId != passedSession ||
+                dialogContext == null) {
+              return;
+            }
+            showDialog<void>(
+              context: dialogContext,
+              builder: (context) => AlertDialog(
+                key: const ValueKey('exam-passed-dialog'),
+                title: const Text('Exam passed!'),
+                content: const Text('You completed all 20 questions.'),
+                actions: [
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
+            );
+          });
+        }
       }
     } else {
       examMistakes++;
@@ -1924,6 +1959,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
 
   Widget learnPage() => LearnOverview(
     history: history,
+    examsPassed: examsPassed,
     lessons: lessons,
     dark: dark,
     onPractice: (mode, characters) {
