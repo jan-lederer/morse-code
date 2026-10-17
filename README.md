@@ -6,13 +6,13 @@ sending practice.
 
 ## Screenshots
 
-| Practice · light | Morse tree |
+| Morse tree · dark | Practice · dark |
 | --- | --- |
-| <img src="screenshots/practice-light.png" alt="Morse sending practice in the light theme" width="300"> | <img src="screenshots/morse-tree.png" alt="Interactive Morse tree" width="300"> |
+| <img src="screenshots/morse-tree-dark.png" alt="Interactive Morse tree in dark mode with the morse app title" width="300"> | <img src="screenshots/practice-dark.png" alt="Morse sending practice in dark mode with the morse app title" width="300"> |
 
-| Practice · dark | Listening · four choices |
+| Learn · dark | Listening · four choices · dark |
 | --- | --- |
-| <img src="screenshots/practice-dark.png" alt="Morse sending practice in the dark theme" width="300"> | <img src="screenshots/listening-choices.png" alt="Listening practice with four answer choices" width="300"> |
+| <img src="screenshots/learn-dark.png" alt="Learn progress overview in dark mode" width="300"> | <img src="screenshots/listening-choices-dark.png" alt="Listening practice with four answer choices in dark mode" width="300"> |
 
 ## Learn and practise
 
