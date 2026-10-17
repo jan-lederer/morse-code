@@ -17,8 +17,13 @@ Learn and Practice also offer **Recognize signals**: identify a character from
 visible dots/dashes and a flashing light, sound, vibration, or a combination.
 Type a letter/number or choose from four distinct answers. Replay or skip a
 signal and retry mistakes. Correct answers advance automatically after 650ms.
-The Practice mode menu switches between sending, typing, and four choices in
-the same screen, sharing Settings, the eye button, group selection, and stats.
+Practice has two icon toggles: Listening and Sending. Each mode can use typed
+answers or four choices. Sending choices ask you to identify the Morse code for
+each target letter. Listening and Sending share Settings, the eye button, group
+selection, and stats. Practice groups include all letters, numbers, short
+lessons, 100 real words, and 100 short sentences; word and sentence prompts are
+answered character by character when sending and as complete phrases when
+listening.
 Typed answers keep the keyboard open across questions until you dismiss it.
 Four choices fill the available width in a large 2×2 grid.
 Lesson shortcuts use that chapter's characters; short chapters fill their four

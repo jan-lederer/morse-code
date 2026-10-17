@@ -7,13 +7,16 @@ import 'practice_controls.dart';
 /// Keeps the target, key, feedback, and progress in one bounded viewport.
 class PracticeWorkspace extends StatelessWidget {
   final bool dark, pressed, holdDash, playing, hideHint;
-  final String target, path, result, group;
+  final bool fourChoices;
+  final String target, path, result, group, hintCharacter;
   final int correct, attempts;
   final Map<String, String> groups;
   final ValueChanged<String> onGroup;
   final ValueChanged<PracticeMode> onMode;
   final VoidCallback? onNewSession;
   final VoidCallback onHint, onListen, onNext, onDot, onDash, onCommit;
+  final List<String> choices;
+  final ValueChanged<String> onChoice;
   final PointerDownEventListener onDown;
   final PointerUpEventListener onUp;
   final PointerCancelEventListener onCancel;
@@ -24,7 +27,9 @@ class PracticeWorkspace extends StatelessWidget {
     required this.holdDash,
     required this.playing,
     required this.hideHint,
+    this.fourChoices = false,
     required this.target,
+    this.hintCharacter = '',
     required this.path,
     required this.result,
     required this.group,
@@ -41,9 +46,12 @@ class PracticeWorkspace extends StatelessWidget {
     required this.onDot,
     required this.onDash,
     required this.onCommit,
+    this.choices = const [],
+    this.onChoice = _ignoreChoice,
     required this.onMode,
     this.onNewSession,
   });
+  static void _ignoreChoice(String _) {}
   static const accent = Color(0xFFE77860), green = Color(0xFF648D78);
   Color get ink => dark ? const Color(0xFFF0F1EC) : const Color(0xFF26302F);
   Color get muted => dark ? const Color(0xFF9AA4A0) : const Color(0xFF747E77);
@@ -85,7 +93,9 @@ class PracticeWorkspace extends StatelessWidget {
               key: const ValueKey('practice-workspace'),
               children: [
                 PracticeHeader(
-                  mode: PracticeMode.send,
+                  mode: fourChoices
+                      ? PracticeMode.sendChoices
+                      : PracticeMode.send,
                   group: group,
                   groups: groups,
                   onMode: onMode,
@@ -100,14 +110,20 @@ class PracticeWorkspace extends StatelessWidget {
                           children: [
                             Expanded(flex: 4, child: challenge(true)),
                             const SizedBox(width: 12),
-                            Expanded(flex: 5, child: controls()),
+                            Expanded(
+                              flex: 5,
+                              child: fourChoices ? _choices() : controls(),
+                            ),
                           ],
                         )
                       : Column(
                           children: [
                             Expanded(flex: 3, child: challenge(false)),
                             const SizedBox(height: 10),
-                            Expanded(flex: 2, child: controls()),
+                            Expanded(
+                              flex: 2,
+                              child: fourChoices ? _choices() : controls(),
+                            ),
                           ],
                         ),
                 ),
@@ -131,7 +147,15 @@ class PracticeWorkspace extends StatelessWidget {
     ),
   );
   Widget hint() => label(
-    hideHint ? '? ? ?' : symbols(morse[target]!),
+    hideHint
+        ? '? ? ?'
+        : symbols(
+            morse[hintCharacter.isNotEmpty
+                ? hintCharacter
+                : target.isEmpty
+                ? 'E'
+                : target[0]]!,
+          ),
     key: const ValueKey('practice-hint'),
     size: 24,
     color: accent,
@@ -182,7 +206,9 @@ class PracticeWorkspace extends StatelessWidget {
             child: Semantics(
               liveRegion: true,
               child: label(
-                result.isEmpty
+                result == 'progress'
+                    ? 'Good. Send the next letter.'
+                    : result.isEmpty
                     ? 'Pause to send your letter'
                     : result == 'correct'
                     ? 'Correct! Next letter…'
@@ -272,6 +298,23 @@ class PracticeWorkspace extends StatelessWidget {
         ),
       ),
     ],
+  );
+
+  Widget _choices() => GridView.count(
+    crossAxisCount: 2,
+    childAspectRatio: 1.6,
+    mainAxisSpacing: 8,
+    crossAxisSpacing: 8,
+    physics: const NeverScrollableScrollPhysics(),
+    children: choices
+        .map(
+          (code) => OutlinedButton(
+            key: ValueKey('send-choice-$code'),
+            onPressed: result == 'correct' ? null : () => onChoice(code),
+            child: Text(symbols(code), style: const TextStyle(fontSize: 24)),
+          ),
+        )
+        .toList(),
   );
   Widget manualButton(String text, IconData icon, VoidCallback onTap) =>
       FilledButton.icon(

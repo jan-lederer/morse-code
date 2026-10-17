@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:dit_morse/main.dart';
 import 'package:dit_morse/morse.dart';
 import 'package:dit_morse/recognition_workspace.dart';
+import 'package:dit_morse/practice_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -86,6 +87,8 @@ void main() {
               'A': 'Only A',
               'ET': 'Your first signals',
               '0123456789': 'Numbers',
+              '@words': 'Real words',
+              '@sentences': 'Sentences',
             },
             initialGroup: group,
             fourChoices: choices,
@@ -116,9 +119,14 @@ void main() {
   }
 
   Future<void> mode(WidgetTester tester, String label) async {
-    await tap(tester, find.byKey(const ValueKey('practice-mode')));
+    final sending = label == 'Send signals';
+    await tap(
+      tester,
+      find.byKey(ValueKey('practice-direction-${sending ? 'send' : 'listen'}')),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text(label).last);
+    final choices = label == '4 choices';
+    await tester.tap(find.text(choices ? '4' : 'Type').last);
     await tester.pumpAndSettle();
   }
 
@@ -248,6 +256,63 @@ void main() {
       isTrue,
     );
     await close(tester);
+  });
+
+  testWidgets(
+    'word and sentence sets build phrase questions with four answers',
+    (tester) async {
+      for (final group in ['@words', '@sentences']) {
+        await open(tester, group: group, choices: true);
+        expect(find.text('NAME THIS WORD OR SENTENCE'), findsOneWidget);
+        expect(
+          tester
+              .widget<Text>(find.byKey(const ValueKey('recognition-code')))
+              .data,
+          contains(' '),
+        );
+        expect(find.byType(OutlinedButton), findsNWidgets(4));
+        expect(tester.takeException(), isNull);
+        await close(tester);
+      }
+    },
+  );
+
+  test('phrase banks contain 100 to 200 entries each', () {
+    expect(practiceWords.length, inInclusiveRange(100, 200));
+    expect(practiceSentences.length, inInclusiveRange(100, 200));
+    expect(practiceWords.toSet().length, practiceWords.length);
+    expect(practiceSentences.toSet().length, practiceSentences.length);
+  });
+
+  testWidgets('typed phrase answers accept complete words and sentences', (
+    tester,
+  ) async {
+    for (final group in ['@words', '@sentences']) {
+      await open(tester, group: group);
+      final shown = tester
+          .widget<Text>(find.byKey(const ValueKey('recognition-code')))
+          .data!
+          .replaceAll('·', '.')
+          .replaceAll('−', '-');
+      final pool = group == '@words' ? practiceWords : practiceSentences;
+      final expected = pool.firstWhere(
+        (phrase) =>
+            phrase
+                .split('')
+                .where(morse.containsKey)
+                .map((letter) => morse[letter]!)
+                .join(' ')
+                .replaceAll(' ', '') ==
+            shown.replaceAll(' ', ''),
+      );
+      await tester.enterText(answer, expected.toLowerCase());
+      await tap(tester, find.text('Check'));
+      expect(answers.last, (
+        expected.split('').where(morse.containsKey).last,
+        true,
+      ));
+      await close(tester);
+    }
   });
 
   testWidgets('first playback sends one complete synchronized device pattern', (
@@ -422,7 +487,9 @@ void main() {
       expect(find.byTooltip('Hide hint'), findsOneWidget);
       await tester.tap(find.text('Learn').last);
       await tester.pumpAndSettle();
-      await tap(tester, find.text('4 choices'));
+      await tester.tap(find.text('Practice').last);
+      await tester.pumpAndSettle();
+      await tap(tester, find.text('4'));
       await tester.pumpAndSettle();
       expect(find.byType(OutlinedButton), findsNWidgets(4));
       expect(find.text('Practice').last, findsOneWidget);

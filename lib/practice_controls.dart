@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 enum PracticeMode {
   send('Send signals'),
   type('Type an answer'),
-  choices('4 choices');
+  choices('4 choices'),
+  sendChoices('Send · 4 choices');
 
   const PracticeMode(this.label);
   final String label;
@@ -72,40 +73,63 @@ class PracticeHeader extends StatelessWidget {
   final ValueChanged<String> onGroup;
   final VoidCallback? onNewSession;
 
+  bool get _sending =>
+      mode == PracticeMode.send || mode == PracticeMode.sendChoices;
+  bool get _choices =>
+      mode == PracticeMode.choices || mode == PracticeMode.sendChoices;
+
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 36,
+    height: 42,
     child: Row(
       children: [
-        Expanded(
-          child: DropdownButton<PracticeMode>(
-            key: const ValueKey('practice-mode'),
-            value: mode,
-            isExpanded: true,
-            underline: const SizedBox(),
-            style: TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurface,
+        for (final sending in [false, true])
+          SizedBox(
+            width: 34,
+            height: 34,
+            child: IconButton(
+              key: ValueKey(
+                'practice-direction-${sending ? 'send' : 'listen'}',
+              ),
+              tooltip: sending ? 'Sending mode' : 'Listening mode',
+              isSelected: _sending == sending,
+              onPressed: () => onMode(
+                sending
+                    ? (_choices ? PracticeMode.sendChoices : PracticeMode.send)
+                    : (_choices ? PracticeMode.choices : PracticeMode.type),
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor: _sending == sending
+                    ? Theme.of(context).colorScheme.secondaryContainer
+                    : Colors.transparent,
+              ),
+              icon: Icon(
+                sending ? Icons.touch_app_outlined : Icons.headphones_outlined,
+                size: 19,
+              ),
             ),
-            items: PracticeMode.values
-                .map(
-                  (m) => DropdownMenuItem(
-                    value: m,
-                    child: Text(
-                      m.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) onMode(value);
-            },
+          ),
+        const SizedBox(width: 8),
+        SegmentedButton<bool>(
+          key: const ValueKey('practice-answer-style'),
+          segments: const [
+            ButtonSegment(value: false, label: Text('Type')),
+            ButtonSegment(value: true, label: Text('4')),
+          ],
+          selected: {_choices},
+          showSelectedIcon: false,
+          style: SegmentedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            minimumSize: const Size(30, 34),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          onSelectionChanged: (value) => onMode(
+            _sending
+                ? (value.first ? PracticeMode.sendChoices : PracticeMode.send)
+                : (value.first ? PracticeMode.choices : PracticeMode.type),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 6),
         Expanded(
           child: DropdownButton<String>(
             key: const ValueKey('practice-group'),
@@ -139,6 +163,7 @@ class PracticeHeader extends StatelessWidget {
             tooltip: 'New practice',
             onPressed: onNewSession,
             visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: const Icon(Icons.refresh, size: 19),
           ),
       ],

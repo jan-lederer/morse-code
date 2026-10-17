@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'morse.dart';
 import 'practice_controls.dart';
+import 'practice_content.dart';
 import 'platform_service.dart';
 
 class RecognitionWorkspace extends StatefulWidget {
@@ -61,6 +62,12 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
   int _playback = 0, _signalIndex = -1, _attempts = 0, _successes = 0;
   String _feedback = '';
   static const _accent = Color(0xFFE77860);
+  bool get _phrases => _group == '@words' || _group == '@sentences';
+  List<String> get _questionPool => _group == '@words'
+      ? practiceWords
+      : _group == '@sentences'
+      ? practiceSentences
+      : _group.split('');
 
   @override
   void initState() {
@@ -76,19 +83,21 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
 
   void _pickQuestion({String? previous}) {
     _advanceTimer?.cancel();
-    final candidates = _group.split('').where((c) => c != previous).toList();
+    final candidates = _questionPool.where((c) => c != previous).toList();
     _target = candidates.isEmpty
-        ? _group[0]
+        ? _questionPool.first
         : candidates[_random.nextInt(candidates.length)];
     // Small lessons still need four distinct options. Prefer the lesson's
     // characters, then fill from the same kind of characters (letters/numbers).
     final pool =
-        (_group.contains(RegExp('[0-9]')) ? '0123456789' : alphabet)
-            .split('')
-            .where((c) => c != _target && !_group.contains(c))
+        (_phrases
+                ? _questionPool
+                : (_group.contains(RegExp('[0-9]')) ? '0123456789' : alphabet)
+                      .split(''))
+            .where((c) => c != _target && !_questionPool.contains(c))
             .toList()
           ..shuffle(_random);
-    final distractors = _group.split('').where((c) => c != _target).toList()
+    final distractors = _questionPool.where((c) => c != _target).toList()
       ..shuffle(_random);
     _choices = [
       _target,
@@ -117,27 +126,38 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
     }
     _stop();
     final id = _playback;
-    final code = morse[_target]!;
+    final codes = _target
+        .split('')
+        .where(morse.containsKey)
+        .map((c) => morse[c]!)
+        .toList();
     setState(() => _playing = true);
-    final lead = await DeviceService.playPattern(
-      code,
-      sound: _sound,
-      vibration: _vibration,
-    );
-    if (!mounted || id != _playback) return;
-    if (lead < 0) {
-      setState(_stop);
-      return;
-    }
-    if (lead > 0) await Future<void>.delayed(Duration(milliseconds: lead));
-    for (var i = 0; i < code.length; i++) {
+    var signal = 0;
+    for (var letter = 0; letter < codes.length; letter++) {
+      final code = codes[letter];
+      final lead = await DeviceService.playPattern(
+        code,
+        sound: _sound,
+        vibration: _vibration,
+      );
       if (!mounted || id != _playback) return;
-      final duration = code[i] == '.' ? 100 : 300;
-      setState(() => _signalIndex = i);
-      await Future<void>.delayed(Duration(milliseconds: duration));
-      if (!mounted || id != _playback) return;
-      setState(() => _signalIndex = -1);
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      if (lead < 0) {
+        setState(_stop);
+        return;
+      }
+      if (lead > 0) await Future<void>.delayed(Duration(milliseconds: lead));
+      for (var i = 0; i < code.length; i++) {
+        if (!mounted || id != _playback) return;
+        final duration = code[i] == '.' ? 100 : 300;
+        setState(() => _signalIndex = signal++);
+        await Future<void>.delayed(Duration(milliseconds: duration));
+        if (!mounted || id != _playback) return;
+        setState(() => _signalIndex = -1);
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+      if (letter < codes.length - 1) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
     }
     if (mounted && id == _playback) setState(() => _playing = false);
   }
@@ -154,8 +174,15 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
   void _submit(String raw) {
     if (_correct || _suspended) return;
     final value = raw.trim().toUpperCase();
-    if (value.length != 1 || !morse.containsKey(value)) {
-      setState(() => _feedback = 'Enter one letter or number.');
+    final valid = _phrases
+        ? RegExp(r'^[A-Z0-9 ]{1,40}$').hasMatch(value)
+        : value.length == 1 && morse.containsKey(value);
+    if (!valid) {
+      setState(
+        () => _feedback = _phrases
+            ? 'Enter the word or sentence.'
+            : 'Enter one letter or number.',
+      );
       return;
     }
     final correct = value == _target;
@@ -172,7 +199,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
         _feedback = 'Not quite. Replay the signal and try again.';
       }
     });
-    widget.onAnswer(_target, correct);
+    widget.onAnswer(_target.split('').where(morse.containsKey).last, correct);
     _scheduleAdvance();
   }
 
@@ -266,7 +293,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
     child: Column(
       children: [
         Text(
-          'NAME THIS CHARACTER',
+          _phrases ? 'NAME THIS WORD OR SENTENCE' : 'NAME THIS CHARACTER',
           style: TextStyle(fontSize: 9, color: _muted),
         ),
         Expanded(
@@ -281,7 +308,13 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                   )
                 : FittedBox(
                     child: Text(
-                      symbols(morse[_target]!),
+                      symbols(
+                        _target
+                            .split('')
+                            .where(morse.containsKey)
+                            .map((c) => morse[c]!)
+                            .join(' '),
+                      ),
                       key: const ValueKey('recognition-code'),
                       style: TextStyle(fontSize: 56, color: _accent),
                     ),
@@ -393,13 +426,18 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
             textCapitalization: TextCapitalization.characters,
             autocorrect: false,
             enableSuggestions: false,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9]')),
-              LengthLimitingTextInputFormatter(1),
-            ],
+            inputFormatters: _phrases
+                ? [
+                    FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9 ]')),
+                    LengthLimitingTextInputFormatter(40),
+                  ]
+                : [
+                    FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9]')),
+                    LengthLimitingTextInputFormatter(1),
+                  ],
             decoration: InputDecoration(
-              labelText: 'Your answer',
-              hintText: 'A–Z or 0–9',
+              labelText: _phrases ? 'Type the word or sentence' : 'Your answer',
+              hintText: _phrases ? 'Type what you heard' : 'A–Z or 0–9',
               filled: true,
               fillColor: _surface,
               border: OutlineInputBorder(

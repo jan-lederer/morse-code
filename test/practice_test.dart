@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dit_morse/main.dart';
 import 'package:dit_morse/morse.dart';
+import 'package:dit_morse/practice_content.dart';
 
 void main() {
   const capture = bool.fromEnvironment('CAPTURE_PRACTICE_PREVIEWS');
@@ -177,6 +178,24 @@ void main() {
       tester.widget<Text>(find.byKey(const ValueKey('practice-correct'))).data,
       '1',
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('word practice and sending answer choices are available', (
+    tester,
+  ) async {
+    await openPractice(tester);
+    await tester.tap(find.byKey(const ValueKey('practice-group')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Real words').last);
+    await tester.pumpAndSettle();
+    expect(practiceWords, contains(target(tester)));
+    await tester.tap(find.byKey(const ValueKey('practice-direction-send')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('4').last);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('touch-morse-key')), findsNothing);
+    expect(find.byType(OutlinedButton), findsNWidgets(4));
     expect(tester.takeException(), isNull);
   });
   testWidgets(

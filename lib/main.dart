@@ -13,6 +13,7 @@ import 'platform_service.dart';
 import 'signal_feedback.dart';
 import 'recognition_workspace.dart';
 import 'practice_controls.dart';
+import 'practice_content.dart';
 import 'progress_history.dart';
 import 'learn_overview.dart';
 
@@ -50,6 +51,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       search = '',
       selectedLetter = '';
   bool hideHint = false;
+  int sendIndex = 0;
   PracticeMode practiceMode = PracticeMode.send;
   String appVersion = '';
   Timer? commitTimer, holdTimer, advanceTimer;
@@ -330,12 +332,21 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         }
       }
       if (page == 2) {
-        recordPractice(PracticeMode.send, target, letter == target);
-        if (letter == target) {
-          result = 'correct';
-          buzz(65);
+        final expected = target[sendIndex];
+        if (letter == expected && sendIndex < target.length - 1) {
+          sendIndex++;
+          result = 'progress';
         } else {
-          result = letter;
+          final isCorrect = letter == expected;
+          recordPractice(practiceMode, expected, isCorrect);
+          if (isCorrect) {
+            sendIndex = 0;
+            result = 'correct';
+            buzz(65);
+          } else {
+            sendIndex = 0;
+            result = letter;
+          }
         }
       }
     });
@@ -380,7 +391,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   void scheduleAdvance() {
     advanceTimer?.cancel();
     if (page != 2 ||
-        practiceMode != PracticeMode.send ||
+        (practiceMode != PracticeMode.send &&
+            practiceMode != PracticeMode.sendChoices) ||
         result != 'correct' ||
         practiceSuspended ||
         dialogOpen) {
@@ -401,15 +413,22 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     advanceTimer?.cancel();
     cancelInput();
     stopPlayback();
-    final candidates = group.split('').where((c) => c != target).toList();
+    final candidates = _practiceTargets().where((c) => c != target).toList();
     setState(() {
       target = candidates.isEmpty
-          ? group[0]
+          ? _practiceTargets().first
           : candidates[math.Random().nextInt(candidates.length)];
+      sendIndex = 0;
       result = '';
       lastCode = '';
     });
   }
+
+  List<String> _practiceTargets() => group == '@words'
+      ? practiceWords
+      : group == '@sentences'
+      ? practiceSentences
+      : group.split('');
 
   Text txt(
     String text, {
@@ -1595,7 +1614,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       startSession();
       result = '';
       lastCode = '';
-      target = group[0];
+      target = _practiceTargets().first;
+      sendIndex = 0;
     });
   }
 
@@ -1615,8 +1635,11 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       startSession();
       result = '';
       lastCode = '';
+      sendIndex = 0;
     });
-    if (mode == PracticeMode.send) focus.requestFocus();
+    if (mode == PracticeMode.send || mode == PracticeMode.sendChoices) {
+      focus.requestFocus();
+    }
   }
 
   void openRecognition({String? characters, bool fourChoices = false}) {
@@ -1636,14 +1659,19 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       changePracticeMode(mode);
     },
   );
-  Widget practicePage() => practiceMode == PracticeMode.send
+  Widget practicePage() =>
+      practiceMode == PracticeMode.send ||
+          practiceMode == PracticeMode.sendChoices
       ? PracticeWorkspace(
           dark: dark,
           pressed: pressed,
           holdDash: holdDash,
           playing: playing,
           hideHint: hideHint,
+          fourChoices: practiceMode == PracticeMode.sendChoices,
+          choices: _sendChoiceCodes(),
           target: target,
+          hintCharacter: target[sendIndex],
           path: visibleCode,
           result: result,
           group: group,
@@ -1652,13 +1680,15 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           groups: {
             alphabet: 'All letters',
             for (final lesson in lessons) lesson.$2: lesson.$1,
+            '@words': 'Real words',
+            '@sentences': 'Sentences',
           },
           onGroup: changePracticeGroup,
           onHint: () {
             setState(() => hideHint = !hideHint);
             save();
           },
-          onListen: () => listen(morse[target]!),
+          onListen: () => listen(morse[target[sendIndex]]!),
           onNext: nextTarget,
           onDown: pointerDown,
           onUp: pointerUp,
@@ -1666,6 +1696,23 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           onDot: () => manual('.'),
           onDash: () => manual('-'),
           onCommit: commit,
+          onChoice: (code) {
+            if (result == 'correct') return;
+            final isCorrect = code == morse[target[sendIndex]];
+            setState(() {
+              final expected = target[sendIndex];
+              if (isCorrect && sendIndex < target.length - 1) {
+                sendIndex++;
+                result = 'progress';
+              } else {
+                recordPractice(practiceMode, expected, isCorrect);
+                if (isCorrect) sendIndex = 0;
+                result = isCorrect ? 'correct' : symbols(code);
+              }
+            });
+            save();
+            scheduleAdvance();
+          },
           onMode: changePracticeMode,
           onNewSession: restartPractice,
         )
@@ -1673,6 +1720,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           groups: {
             alphabet: 'All letters',
             for (final lesson in lessons) lesson.$2: lesson.$1,
+            '@words': 'Real words',
+            '@sentences': 'Sentences',
           },
           initialGroup: group,
           fourChoices: practiceMode == PracticeMode.choices,
@@ -1699,6 +1748,15 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
             save();
           },
         );
+
+  List<String> _sendChoiceCodes() {
+    final targetCode = morse[target[sendIndex]]!;
+    final pool = morse.values
+        .where((code) => code != targetCode)
+        .toSet()
+        .toList();
+    return [targetCode, ...pool.take(3)];
+  }
 
   Widget alphabetPage() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,

@@ -142,7 +142,7 @@ class _LearnOverviewState extends State<LearnOverview> {
           ),
         ),
         const SizedBox(height: 8),
-        for (final mode in PracticeMode.values) ...[
+        for (final mode in [PracticeMode.send, PracticeMode.type]) ...[
           _modeCard(mode),
           const SizedBox(height: 8),
         ],
@@ -199,7 +199,15 @@ class _LearnOverviewState extends State<LearnOverview> {
   }
 
   Widget _modeCard(PracticeMode mode) {
-    final summary = widget.history.summary(mode: mode);
+    final sending = mode == PracticeMode.send;
+    final relatedModes = sending
+        ? [PracticeMode.send, PracticeMode.sendChoices]
+        : [PracticeMode.type, PracticeMode.choices];
+    final summary = ProgressSummary(
+      widget.history.records
+          .where((record) => relatedModes.contains(record.mode))
+          .toList(),
+    );
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -209,9 +217,7 @@ class _LearnOverviewState extends State<LearnOverview> {
           Row(
             children: [
               Icon(
-                mode == PracticeMode.send
-                    ? Icons.touch_app_outlined
-                    : Icons.hearing_outlined,
+                sending ? Icons.touch_app_outlined : Icons.hearing_outlined,
                 size: 21,
                 color: accent,
               ),
@@ -224,7 +230,7 @@ class _LearnOverviewState extends State<LearnOverview> {
                       children: [
                         Expanded(
                           child: Text(
-                            mode.label,
+                            sending ? 'Sending' : 'Listening',
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -239,7 +245,7 @@ class _LearnOverviewState extends State<LearnOverview> {
                       ],
                     ),
                     Text(
-                      mode == PracticeMode.send ? 'Sending' : 'Listening',
+                      sending ? 'Signals or choices' : 'Typed or choices',
                       style: TextStyle(fontSize: 10, color: muted),
                     ),
                     const SizedBox(height: 7),
