@@ -8,10 +8,11 @@ import 'practice_controls.dart';
 class PracticeWorkspace extends StatelessWidget {
   final bool dark, pressed, holdDash, playing, hideHint;
   final String target, path, result, group;
-  final int correct, attempts, learned;
+  final int correct, attempts;
   final Map<String, String> groups;
   final ValueChanged<String> onGroup;
   final ValueChanged<PracticeMode> onMode;
+  final VoidCallback? onNewSession;
   final VoidCallback onHint, onListen, onNext, onDot, onDash, onCommit;
   final PointerDownEventListener onDown;
   final PointerUpEventListener onUp;
@@ -29,7 +30,6 @@ class PracticeWorkspace extends StatelessWidget {
     required this.group,
     required this.correct,
     required this.attempts,
-    required this.learned,
     required this.groups,
     required this.onGroup,
     required this.onHint,
@@ -42,6 +42,7 @@ class PracticeWorkspace extends StatelessWidget {
     required this.onDash,
     required this.onCommit,
     required this.onMode,
+    this.onNewSession,
   });
   static const accent = Color(0xFFE77860), green = Color(0xFF648D78);
   Color get ink => dark ? const Color(0xFFF0F1EC) : const Color(0xFF26302F);
@@ -89,6 +90,7 @@ class PracticeWorkspace extends StatelessWidget {
                   groups: groups,
                   onMode: onMode,
                   onGroup: onGroup,
+                  onNewSession: onNewSession,
                 ),
                 const SizedBox(height: 8),
                 Expanded(
@@ -110,11 +112,7 @@ class PracticeWorkspace extends StatelessWidget {
                         ),
                 ),
                 const SizedBox(height: 6),
-                PracticeStats(
-                  correct: correct,
-                  attempts: attempts,
-                  learned: learned,
-                ),
+                PracticeStats(correct: correct, attempts: attempts),
               ],
             );
           },

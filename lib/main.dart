@@ -13,6 +13,8 @@ import 'platform_service.dart';
 import 'signal_feedback.dart';
 import 'recognition_workspace.dart';
 import 'practice_controls.dart';
+import 'progress_history.dart';
+import 'learn_overview.dart';
 
 const coral = Color(0xFFE77860);
 const green = Color(0xFF648D78);
@@ -36,6 +38,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       playing = false;
   int page = 1, pace = 1, attempts = 0, correct = 0;
   final learned = <String>{};
+  ProgressHistory history = ProgressHistory();
+  int sessionAttempts = 0, sessionCorrect = 0, sessionSerial = 0;
+  String sessionId = DateTime.now().microsecondsSinceEpoch.toString();
   String sequence = '',
       lastCode = '',
       message = '',
@@ -91,19 +96,14 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         vibration = data['vibration'] == true;
         hideHint = data['hideHint'] == true;
         pace = (data['pace'] is int ? data['pace'] as int : 1).clamp(0, 2);
-        attempts = math.max(
-          0,
-          data['attempts'] is int ? data['attempts'] as int : 0,
-        );
-        correct = (data['correct'] is int ? data['correct'] as int : 0).clamp(
-          0,
-          attempts,
-        );
-        learned.addAll(
-          (data['learned'] is List ? data['learned'] as List : [])
-              .whereType<String>()
-              .where(morse.containsKey),
-        );
+        final loaded = ProgressHistory.fromSaved(data);
+        loaded.merge(history.records);
+        history = loaded;
+        attempts = history.totalAttempts;
+        correct = history.totalCorrect;
+        learned
+          ..clear()
+          ..addAll(history.allLetters);
       });
     } catch (_) {
       /* A damaged preference never prevents startup. */
@@ -121,6 +121,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         'attempts': attempts,
         'correct': correct,
         'learned': learned.toList(),
+        'progress': history.toJson(),
       }),
     );
   }
@@ -329,10 +330,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         }
       }
       if (page == 2) {
-        attempts++;
+        recordPractice(PracticeMode.send, target, letter == target);
         if (letter == target) {
-          correct++;
-          learned.add(letter);
           result = 'correct';
           buzz(65);
         } else {
@@ -370,6 +369,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     cancelInput();
     stopPlayback();
     setState(() {
+      if (value == 2 && page != 2) startSession();
       page = value;
       lastCode = '';
       result = '';
@@ -1560,12 +1560,59 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     ('Make it count', '0123456789', 'A few numbers for your vocabulary.'),
   ];
 
+  void startSession() {
+    sessionAttempts = 0;
+    sessionCorrect = 0;
+    sessionId = '${DateTime.now().microsecondsSinceEpoch}:${++sessionSerial}';
+  }
+
+  void recordPractice(PracticeMode mode, String letter, bool isCorrect) {
+    sessionAttempts++;
+    attempts++;
+    if (isCorrect) {
+      sessionCorrect++;
+      correct++;
+      learned.add(letter);
+    }
+    history.records.add(
+      PracticeRecord(
+        id: '$sessionId:$sessionAttempts',
+        at: DateTime.now().toUtc(),
+        mode: mode,
+        letter: letter,
+        correct: isCorrect,
+        session: sessionId,
+        hinted: !hideHint,
+      ),
+    );
+  }
+
+  void restartPractice() {
+    advanceTimer?.cancel();
+    cancelInput();
+    stopPlayback();
+    setState(() {
+      startSession();
+      result = '';
+      lastCode = '';
+      target = group[0];
+    });
+  }
+
+  void changePracticeGroup(String value) {
+    if (group == value) return;
+    group = value;
+    restartPractice();
+  }
+
   void changePracticeMode(PracticeMode mode) {
+    if (mode == practiceMode) return;
     advanceTimer?.cancel();
     cancelInput();
     stopPlayback();
     setState(() {
       practiceMode = mode;
+      startSession();
       result = '';
       lastCode = '';
     });
@@ -1578,201 +1625,16 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     changePracticeMode(fourChoices ? PracticeMode.choices : PracticeMode.type);
   }
 
-  Widget learnPage() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      intro(
-        'ONE SIGNAL AT A TIME',
-        'A little practice.\nA whole new language',
-        'Start small, find your rhythm, and make every signal count.',
-      ),
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(27),
-        decoration: BoxDecoration(
-          color: dark ? const Color(0xFF30382F) : const Color(0xFFE9EBDD),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: LayoutBuilder(
-          builder: (context, c) => Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    badge('YOUR JOURNEY'),
-                    const SizedBox(height: 15),
-                    txt(
-                      learned.isEmpty
-                          ? 'Your first signal starts here.'
-                          : 'You’re finding your signal.',
-                      size: 24,
-                      weight: FontWeight.w600,
-                      height: 1.3,
-                    ),
-                    const SizedBox(height: 12),
-                    txt(
-                      '${learned.length} of 36 characters practiced correctly.\nThere’s no finish line to rush toward.',
-                      size: 12,
-                      color: muted,
-                      height: 1.8,
-                    ),
-                    const SizedBox(height: 22),
-                    action(
-                      'Keep practicing',
-                      () => switchPage(2),
-                      icon: Icons.arrow_forward,
-                      primary: true,
-                    ),
-                  ],
-                ),
-              ),
-              if (c.maxWidth > 600)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Column(
-                    children: [
-                      txt('· − ·', size: 90, color: green, spacing: 10),
-                      txt(
-                        'SMALL SIGNALS, BIG POSSIBILITIES',
-                        size: 8,
-                        color: green,
-                        spacing: 2,
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-      const SizedBox(height: 20),
-      panel(
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            txt('Recognize signals', size: 18, weight: FontWeight.w600),
-            const SizedBox(height: 8),
-            txt(
-              'See, hear, or feel a signal. Name the character.',
-              size: 12,
-              color: muted,
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                action(
-                  'Type an answer',
-                  () => openRecognition(),
-                  icon: Icons.edit_outlined,
-                ),
-                action(
-                  '4 choices',
-                  () => openRecognition(fourChoices: true),
-                  icon: Icons.grid_view_outlined,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 32),
-      heading(
-        'Your learning path',
-        trailing: txt('5 bite-sized chapters', size: 10, color: muted),
-      ),
-      const SizedBox(height: 17),
-      LayoutBuilder(
-        builder: (context, c) => Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: List.generate(lessons.length, (i) {
-            final l = lessons[i];
-            final done = l.$2.split('').where(learned.contains).length;
-            return SizedBox(
-              width: c.maxWidth > 750
-                  ? (c.maxWidth - 32) / 3
-                  : c.maxWidth > 500
-                  ? (c.maxWidth - 16) / 2
-                  : c.maxWidth,
-              child: Material(
-                color: surface,
-                borderRadius: BorderRadius.circular(15),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(15),
-                  onTap: () {
-                    group = l.$2;
-                    target = group[0];
-                    switchPage(2);
-                  },
-                  child: panel(
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            txt('0${i + 1}', size: 12, color: muted),
-                            const Spacer(),
-                            badge(
-                              done == l.$2.length
-                                  ? 'PRACTICED'
-                                  : i == 0
-                                  ? 'START HERE'
-                                  : '${l.$2.length} CHARACTERS',
-                              accent: i == 0,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 30),
-                        txt(
-                          l.$2.split('').join(' '),
-                          size: 22,
-                          color: coral,
-                          weight: FontWeight.w500,
-                          height: 1.5,
-                        ),
-                        const SizedBox(height: 15),
-                        txt(l.$1, size: 16, weight: FontWeight.w600),
-                        const SizedBox(height: 9),
-                        txt(l.$3, size: 11, color: muted, height: 1.7),
-                        TextButton.icon(
-                          onPressed: () => openRecognition(characters: l.$2),
-                          icon: const Icon(Icons.hearing_outlined, size: 16),
-                          label: const Text('Recognize signals'),
-                        ),
-                        const SizedBox(height: 23),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(3),
-                                child: LinearProgressIndicator(
-                                  value: done / l.$2.length,
-                                  minHeight: 3,
-                                  color: green,
-                                  backgroundColor: line,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 35),
-                            smallIcon(Icons.arrow_forward, size: 17),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
-      ),
-      const SizedBox(height: 24),
-      gentleTip(),
-    ],
+  Widget learnPage() => LearnOverview(
+    history: history,
+    lessons: lessons,
+    dark: dark,
+    onPractice: (mode, characters) {
+      group = characters;
+      target = group[0];
+      switchPage(2);
+      changePracticeMode(mode);
+    },
   );
   Widget practicePage() => practiceMode == PracticeMode.send
       ? PracticeWorkspace(
@@ -1785,17 +1647,13 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           path: visibleCode,
           result: result,
           group: group,
-          correct: correct,
-          attempts: attempts,
-          learned: learned.length,
+          correct: sessionCorrect,
+          attempts: sessionAttempts,
           groups: {
             alphabet: 'All letters',
             for (final lesson in lessons) lesson.$2: lesson.$1,
           },
-          onGroup: (value) {
-            group = value;
-            nextTarget();
-          },
+          onGroup: changePracticeGroup,
           onHint: () {
             setState(() => hideHint = !hideHint);
             save();
@@ -1809,6 +1667,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           onDash: () => manual('-'),
           onCommit: commit,
           onMode: changePracticeMode,
+          onNewSession: restartPractice,
         )
       : RecognitionWorkspace(
           groups: {
@@ -1822,11 +1681,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           dark: dark,
           hideHint: hideHint,
           suspended: practiceSuspended || dialogOpen,
-          correct: correct,
-          attempts: attempts,
-          learned: learned.length,
+          sessionId: sessionId,
+          correct: sessionCorrect,
+          attempts: sessionAttempts,
           onMode: changePracticeMode,
-          onGroup: (value) => setState(() => group = value),
+          onNewSession: restartPractice,
+          onGroup: changePracticeGroup,
           onHint: () {
             setState(() => hideHint = !hideHint);
             save();
@@ -1834,11 +1694,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           onAnswer: (letter, isCorrect) {
             if (!mounted) return;
             setState(() {
-              attempts++;
-              if (isCorrect) {
-                correct++;
-                learned.add(letter);
-              }
+              recordPractice(practiceMode, letter, isCorrect);
             });
             save();
           },

@@ -25,7 +25,8 @@ class RecognitionWorkspace extends StatefulWidget {
     this.onGroup,
     this.correct,
     this.attempts,
-    this.learned = 0,
+    this.sessionId = '',
+    this.onNewSession,
   });
 
   final Map<String, String> groups;
@@ -35,7 +36,8 @@ class RecognitionWorkspace extends StatefulWidget {
   final ValueChanged<PracticeMode>? onMode;
   final ValueChanged<String>? onGroup;
   final int? correct, attempts;
-  final int learned;
+  final String sessionId;
+  final VoidCallback? onNewSession;
   final void Function(String letter, bool correct) onAnswer;
 
   @override
@@ -211,7 +213,8 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
   void didUpdateWidget(covariant RecognitionWorkspace oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialGroup != widget.initialGroup ||
-        oldWidget.fourChoices != widget.fourChoices) {
+        oldWidget.fourChoices != widget.fourChoices ||
+        oldWidget.sessionId != widget.sessionId) {
       _stop();
       _group = widget.initialGroup;
       _fourChoices = widget.fourChoices;
@@ -425,7 +428,6 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
           child: PracticeStats(
             correct: widget.correct ?? _successes,
             attempts: widget.attempts ?? _attempts,
-            learned: widget.learned,
           ),
         ),
         IconButton(
@@ -451,6 +453,14 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
               groups: widget.groups,
               onMode: _setMode,
               onGroup: _setGroup,
+              onNewSession:
+                  widget.onNewSession ??
+                  () => setState(() {
+                    _stop();
+                    _attempts = 0;
+                    _successes = 0;
+                    _pickQuestion(previous: _target);
+                  }),
             );
             if (bounds.maxHeight < 440) {
               return SingleChildScrollView(

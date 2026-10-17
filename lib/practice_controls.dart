@@ -14,9 +14,8 @@ class PracticeStats extends StatelessWidget {
     super.key,
     required this.correct,
     required this.attempts,
-    required this.learned,
   });
-  final int correct, attempts, learned;
+  final int correct, attempts;
 
   Widget _stat(String value, String title, {Key? key}) => Expanded(
     child: Row(
@@ -50,7 +49,7 @@ class PracticeStats extends StatelessWidget {
           attempts == 0 ? '0%' : '${(correct / attempts * 100).round()}%',
           'Accuracy',
         ),
-        _stat('$learned', 'Practiced'),
+        _stat('$attempts', 'Answers'),
       ],
     ),
   );
@@ -64,12 +63,14 @@ class PracticeHeader extends StatelessWidget {
     required this.groups,
     required this.onMode,
     required this.onGroup,
+    this.onNewSession,
   });
   final PracticeMode mode;
   final String group;
   final Map<String, String> groups;
   final ValueChanged<PracticeMode> onMode;
   final ValueChanged<String> onGroup;
+  final VoidCallback? onNewSession;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -133,6 +134,13 @@ class PracticeHeader extends StatelessWidget {
             },
           ),
         ),
+        if (onNewSession != null)
+          IconButton(
+            tooltip: 'New practice',
+            onPressed: onNewSession,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.refresh, size: 19),
+          ),
       ],
     ),
   );
