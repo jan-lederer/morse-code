@@ -167,7 +167,7 @@ class _LearnOverviewState extends State<LearnOverview> {
             tilePadding: EdgeInsets.zero,
             title: const Text('Chapters', style: TextStyle(fontSize: 15)),
             subtitle: Text(
-              'Five small steps, at your own pace',
+              'Two focused steps, at your own pace',
               style: TextStyle(fontSize: 11, color: muted),
             ),
             children: [

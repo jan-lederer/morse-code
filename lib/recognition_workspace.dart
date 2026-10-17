@@ -27,6 +27,10 @@ class RecognitionWorkspace extends StatefulWidget {
     this.correct,
     this.attempts,
     this.sessionId = '',
+    this.examMode = false,
+    this.examQuestion = 0,
+    this.examLives = 3,
+    this.examStatus = '',
     this.onNewSession,
   });
 
@@ -38,6 +42,9 @@ class RecognitionWorkspace extends StatefulWidget {
   final ValueChanged<String>? onGroup;
   final int? correct, attempts;
   final String sessionId;
+  final bool examMode;
+  final int examQuestion, examLives;
+  final String examStatus;
   final VoidCallback? onNewSession;
   final void Function(String letter, bool correct) onAnswer;
 
@@ -67,6 +74,8 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
       ? practiceWords
       : _group == '@sentences'
       ? practiceSentences
+      : _group == '@exam' || _group == '@symbols'
+      ? morse.keys.toList()
       : _group.split('');
 
   @override
@@ -163,7 +172,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
   }
 
   void _next() {
-    if (_suspended) return;
+    if (_suspended || widget.examMode) return;
     setState(() {
       _stop();
       _pickQuestion(previous: _target);
@@ -172,7 +181,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
   }
 
   void _submit(String raw) {
-    if (_correct || _suspended) return;
+    if (_correct || _suspended || widget.examStatus.isNotEmpty) return;
     final value = raw.trim().toUpperCase();
     final valid = _phrases
         ? RegExp(r'^[A-Z0-9 ]{1,40}$').hasMatch(value)
@@ -205,7 +214,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
 
   void _scheduleAdvance() {
     _advanceTimer?.cancel();
-    if (!_correct || _suspended) return;
+    if (!_correct || _suspended || widget.examMode) return;
     _advanceTimer = Timer(const Duration(milliseconds: 650), () {
       if (mounted && !_suspended && _correct) _next();
     });
@@ -343,7 +352,11 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
             child: Semantics(
               liveRegion: true,
               child: Text(
-                _feedback,
+                widget.examStatus == 'failed'
+                    ? 'Exam failed · three mistakes'
+                    : widget.examStatus == 'passed'
+                    ? 'Exam passed!'
+                    : _feedback,
                 key: const ValueKey('recognition-feedback'),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -383,6 +396,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                           ),
                           onPressed:
                               _correct ||
+                                  widget.examStatus.isNotEmpty ||
                                   _wrongChoices.contains(
                                     _choices[row * 2 + col],
                                   )
@@ -423,6 +437,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
             controller: _answer,
             focusNode: _answerFocus,
             autofocus: true,
+            enabled: widget.examStatus.isEmpty,
             textCapitalization: TextCapitalization.characters,
             autocorrect: false,
             enableSuggestions: false,
@@ -451,7 +466,9 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
         ),
         const SizedBox(width: 8),
         FilledButton(
-          onPressed: _correct ? null : () => _submit(_answer.text),
+          onPressed: _correct || widget.examStatus.isNotEmpty
+              ? null
+              : () => _submit(_answer.text),
           child: const Text('Check'),
         ),
       ],
@@ -466,11 +483,14 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
           child: PracticeStats(
             correct: widget.correct ?? _successes,
             attempts: widget.attempts ?? _attempts,
+            examQuestion: widget.examMode ? widget.examQuestion : null,
+            examLives: widget.examLives,
+            examStatus: widget.examStatus,
           ),
         ),
         IconButton(
           tooltip: 'Skip letter',
-          onPressed: _next,
+          onPressed: widget.examMode ? null : _next,
           icon: Icon(Icons.skip_next_outlined, color: _muted),
         ),
       ],
@@ -499,6 +519,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                     _successes = 0;
                     _pickQuestion(previous: _target);
                   }),
+              exam: widget.examMode,
             );
             if (bounds.maxHeight < 440) {
               return SingleChildScrollView(

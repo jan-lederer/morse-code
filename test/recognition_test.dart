@@ -60,7 +60,7 @@ void main() {
 
   Future<void> open(
     WidgetTester tester, {
-    String group = 'ET',
+    String group = '@symbols',
     bool choices = false,
     bool sound = false,
     bool vibration = false,
@@ -85,7 +85,8 @@ void main() {
           body: RecognitionWorkspace(
             groups: const {
               'A': 'Only A',
-              'ET': 'Your first signals',
+              '@symbols': 'All symbols · 36',
+              'ABCDEFGHIJKLMNOPQRSTUVWXYZ': 'Alphabet · A–Z',
               '0123456789': 'Numbers',
               '@words': 'Real words',
               '@sentences': 'Sentences',

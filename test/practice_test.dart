@@ -185,9 +185,46 @@ void main() {
     tester,
   ) async {
     await openPractice(tester);
+    final groupPicker = find.byKey(const ValueKey('practice-group'));
+    final collapsedIcon = find.byKey(
+      const ValueKey('practice-group-selected-$alphabet'),
+    );
+    expect(collapsedIcon, findsOneWidget);
+    expect(
+      find.descendant(of: groupPicker, matching: find.byType(Text)),
+      findsNothing,
+    );
+    expect(
+      tester.getRect(collapsedIcon).center.dy,
+      closeTo(tester.getRect(groupPicker).center.dy, 1),
+    );
     await tester.tap(find.byKey(const ValueKey('practice-group')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Real words').last);
+    expect(
+      find.byKey(const ValueKey('practice-group-option-$alphabet')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('practice-group-option-@words')),
+      findsOneWidget,
+    );
+    expect(find.text('Alphabet · A–Z'), findsOneWidget);
+    expect(find.text('Numbers · 0–9'), findsOneWidget);
+    expect(find.text('Words · 100'), findsOneWidget);
+    expect(find.text('Sentences · 100'), findsOneWidget);
+    expect(find.text('All symbols · 36'), findsOneWidget);
+    expect(find.text('More conversation'), findsNothing);
+    expect(find.text('A little more conversation'), findsNothing);
+    expect(find.text('First signals'), findsNothing);
+    expect(find.text('All letters'), findsNothing);
+    expect(find.text('The whole alphabet'), findsNothing);
+    expect(find.text('Make it count'), findsNothing);
+    await tester.tap(find.text('All symbols · 36'));
+    await tester.pumpAndSettle();
+    expect(morse.keys, contains(target(tester)));
+    await tester.tap(find.byKey(const ValueKey('practice-group')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Words · 100'));
     await tester.pumpAndSettle();
     expect(practiceWords, contains(target(tester)));
     await tester.tap(find.byKey(const ValueKey('practice-direction-send')));
@@ -197,6 +234,43 @@ void main() {
     expect(find.byKey(const ValueKey('touch-morse-key')), findsNothing);
     expect(find.byType(OutlinedButton), findsNWidgets(4));
     expect(tester.takeException(), isNull);
+  });
+  testWidgets('sending choices stay above practice stats on phone layouts', (
+    tester,
+  ) async {
+    for (final size in [
+      const Size(320, 568),
+      const Size(390, 844),
+      const Size(568, 320),
+      const Size(844, 390),
+    ]) {
+      await openPractice(tester, size: size);
+      await tester.tap(find.byKey(const ValueKey('practice-direction-send')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('4').last);
+      await tester.pumpAndSettle();
+
+      final choices = find.byWidgetPredicate(
+        (widget) =>
+            widget is OutlinedButton &&
+            widget.key is ValueKey<String> &&
+            (widget.key as ValueKey<String>).value.startsWith('send-choice-'),
+      );
+      expect(choices, findsNWidgets(4), reason: 'layout $size');
+      final stats = tester.getRect(
+        find.byKey(const ValueKey('practice-stats')),
+      );
+      for (var i = 0; i < 4; i++) {
+        final button = tester.getRect(choices.at(i));
+        expect(
+          button.bottom,
+          lessThanOrEqualTo(stats.top),
+          reason: 'layout $size',
+        );
+      }
+      expect(tester.takeException(), isNull, reason: 'layout $size');
+      await tester.pumpWidget(const SizedBox.shrink());
+    }
   });
   testWidgets(
     'pausing after a touch sends the answer and advances automatically',
@@ -257,10 +331,10 @@ void main() {
         .widget<DropdownButton<String>>(
           find.byKey(const ValueKey('practice-group')),
         )
-        .onChanged!('ET');
+        .onChanged!('@symbols');
     await tester.pump();
     final next = target(tester);
-    expect('ET', contains(next));
+    expect(morse.keys, contains(next));
     await tester.pump(const Duration(seconds: 1));
     expect(target(tester), next);
     expect(tester.takeException(), isNull);
@@ -305,7 +379,7 @@ void main() {
           .widget<DropdownButton<String>>(
             find.byKey(const ValueKey('practice-group')),
           )
-          .onChanged!('ET');
+          .onChanged!('@symbols');
       await tester.pump();
       expect(
         tester.widget<Text>(find.byKey(const ValueKey('practice-hint'))).data,
@@ -373,6 +447,86 @@ void main() {
       symbols(morse[target(tester)]!),
     );
     expect(find.byTooltip('Hide hint'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('exam can resume, start fresh, and cannot resume when terminal', (
+    tester,
+  ) async {
+    const channel = MethodChannel('studio.dit/device');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    String? stored;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'load') return stored;
+      if (call.method == 'save') stored = call.arguments as String;
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    Future<void> openExamDialog() async {
+      tester
+          .widget<DropdownButton<String>>(
+            find.byKey(const ValueKey('practice-group')),
+          )
+          .onChanged!('@exam');
+      await tester.pumpAndSettle();
+    }
+
+    await openPractice(tester);
+    await openExamDialog();
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const ValueKey('resume-last-exam')))
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.byKey(const ValueKey('start-new-exam')));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('exam-question'))).data,
+      '1 / 20',
+    );
+    final firstExam = jsonDecode(stored!) as Map<String, dynamic>;
+    final snapshot = firstExam['savedExam'] as Map<String, dynamic>;
+    expect(snapshot['question'], 1);
+    expect((snapshot['remainingModes'] as List).length, 19);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(const DitApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Practice').last);
+    await tester.pumpAndSettle();
+    await openExamDialog();
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const ValueKey('resume-last-exam')))
+          .onPressed,
+      isNotNull,
+    );
+    await tester.tap(find.byKey(const ValueKey('resume-last-exam')));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('exam-question'))).data,
+      '1 / 20',
+    );
+
+    final failed = Map<String, dynamic>.of(snapshot)..['mistakes'] = 3;
+    final preferences = jsonDecode(stored!) as Map<String, dynamic>;
+    preferences['savedExam'] = failed;
+    stored = jsonEncode(preferences);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(const DitApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Practice').last);
+    await tester.pumpAndSettle();
+    await openExamDialog();
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const ValueKey('resume-last-exam')))
+          .onPressed,
+      isNull,
+    );
     expect(tester.takeException(), isNull);
   });
 }

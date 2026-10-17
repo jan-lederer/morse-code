@@ -15,8 +15,13 @@ class PracticeStats extends StatelessWidget {
     super.key,
     required this.correct,
     required this.attempts,
+    this.examQuestion,
+    this.examLives,
+    this.examStatus = '',
   });
   final int correct, attempts;
+  final int? examQuestion, examLives;
+  final String examStatus;
 
   Widget _stat(String value, String title, {Key? key}) => Expanded(
     child: Row(
@@ -25,9 +30,9 @@ class PracticeStats extends StatelessWidget {
         Text(
           value,
           key: key,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 4),
         Flexible(
           child: Text(
             title,
@@ -43,16 +48,50 @@ class PracticeStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     height: 34,
-    child: Row(
-      children: [
-        _stat('$correct', 'Correct', key: const ValueKey('practice-correct')),
-        _stat(
-          attempts == 0 ? '0%' : '${(correct / attempts * 100).round()}%',
-          'Accuracy',
-        ),
-        _stat('$attempts', 'Answers'),
-      ],
-    ),
+    child: examQuestion == null
+        ? Row(
+            children: [
+              _stat(
+                '$correct',
+                'Correct',
+                key: const ValueKey('practice-correct'),
+              ),
+              _stat(
+                attempts == 0 ? '0%' : '${(correct / attempts * 100).round()}%',
+                'Accuracy',
+              ),
+              _stat('$attempts', 'Answers'),
+            ],
+          )
+        : Row(
+            children: [
+              _stat(
+                '$examQuestion / 20',
+                'Question',
+                key: const ValueKey('exam-question'),
+              ),
+              _stat('$examLives', 'Lives'),
+              Expanded(
+                child: Text(
+                  examStatus == 'passed'
+                      ? 'PASSED'
+                      : examStatus == 'failed'
+                      ? 'FAILED'
+                      : 'Exam',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: examStatus == 'failed'
+                        ? const Color(0xFFE77860)
+                        : examStatus == 'passed'
+                        ? const Color(0xFF648D78)
+                        : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
   );
 }
 
@@ -65,6 +104,7 @@ class PracticeHeader extends StatelessWidget {
     required this.onMode,
     required this.onGroup,
     this.onNewSession,
+    this.exam = false,
   });
   final PracticeMode mode;
   final String group;
@@ -72,6 +112,7 @@ class PracticeHeader extends StatelessWidget {
   final ValueChanged<PracticeMode> onMode;
   final ValueChanged<String> onGroup;
   final VoidCallback? onNewSession;
+  final bool exam;
 
   bool get _sending =>
       mode == PracticeMode.send || mode == PracticeMode.sendChoices;
@@ -93,11 +134,17 @@ class PracticeHeader extends StatelessWidget {
               ),
               tooltip: sending ? 'Sending mode' : 'Listening mode',
               isSelected: _sending == sending,
-              onPressed: () => onMode(
-                sending
-                    ? (_choices ? PracticeMode.sendChoices : PracticeMode.send)
-                    : (_choices ? PracticeMode.choices : PracticeMode.type),
-              ),
+              onPressed: exam
+                  ? null
+                  : () => onMode(
+                      sending
+                          ? (_choices
+                                ? PracticeMode.sendChoices
+                                : PracticeMode.send)
+                          : (_choices
+                                ? PracticeMode.choices
+                                : PracticeMode.type),
+                    ),
               style: IconButton.styleFrom(
                 backgroundColor: _sending == sending
                     ? Theme.of(context).colorScheme.secondaryContainer
@@ -123,44 +170,79 @@ class PracticeHeader extends StatelessWidget {
             minimumSize: const Size(30, 34),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          onSelectionChanged: (value) => onMode(
-            _sending
-                ? (value.first ? PracticeMode.sendChoices : PracticeMode.send)
-                : (value.first ? PracticeMode.choices : PracticeMode.type),
-          ),
+          onSelectionChanged: exam
+              ? null
+              : (value) => onMode(
+                  _sending
+                      ? (value.first
+                            ? PracticeMode.sendChoices
+                            : PracticeMode.send)
+                      : (value.first
+                            ? PracticeMode.choices
+                            : PracticeMode.type),
+                ),
         ),
         const SizedBox(width: 6),
         Expanded(
-          child: DropdownButton<String>(
-            key: const ValueKey('practice-group'),
-            value: group,
-            isExpanded: true,
-            underline: const SizedBox(),
-            style: TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-            items: groups.entries
-                .map(
-                  (e) => DropdownMenuItem(
-                    value: e.key,
-                    child: Text(
-                      e.value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+          child: Tooltip(
+            message: 'Practice set: ${groups[group] ?? group}',
+            child: DropdownButton<String>(
+              key: const ValueKey('practice-group'),
+              value: group,
+              isExpanded: true,
+              menuWidth: MediaQuery.sizeOf(context).width * .85,
+              menuMaxHeight: MediaQuery.sizeOf(context).height * .65,
+              underline: const SizedBox(),
+              style: TextStyle(
+                fontFamily: 'Roboto',
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              selectedItemBuilder: (context) => groups.entries
+                  .map(
+                    (entry) => Center(
+                      child: Icon(
+                        _groupIcon(entry.value),
+                        key: ValueKey('practice-group-selected-${entry.key}'),
+                        size: 20,
+                      ),
                     ),
-                  ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) onGroup(value);
-            },
+                  )
+                  .toList(),
+              items: groups.entries
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e.key,
+                      child: Row(
+                        children: [
+                          Icon(
+                            _groupIcon(e.value),
+                            key: ValueKey('practice-group-option-${e.key}'),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              e.value,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) onGroup(value);
+              },
+            ),
           ),
         ),
         if (onNewSession != null)
           IconButton(
-            tooltip: 'New practice',
+            tooltip: exam ? 'Start new exam' : 'New practice',
             onPressed: onNewSession,
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
@@ -169,6 +251,16 @@ class PracticeHeader extends StatelessWidget {
       ],
     ),
   );
+
+  IconData _groupIcon(String label) => switch (label) {
+    _ when label.startsWith('Alphabet') => Icons.sort_by_alpha,
+    _ when label.startsWith('Numbers') => Icons.numbers,
+    _ when label.startsWith('Words') => Icons.short_text,
+    _ when label.startsWith('Sentences') => Icons.subject,
+    _ when label.startsWith('All symbols') => Icons.grid_view_outlined,
+    _ when label.startsWith('Exam') => Icons.assignment_outlined,
+    _ => Icons.list_alt_outlined,
+  };
 }
 
 class PracticeSignalActions extends StatelessWidget {

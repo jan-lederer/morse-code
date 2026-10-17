@@ -53,7 +53,7 @@ def outputs():
         files[f'web/icons/Icon-{size}.png'] = png(size, True)
         files[f'web/icons/Icon-maskable-{size}.png'] = png(size, False)
     files['web/favicon.png'] = png(32, True)
-    files['assets/branding/app-icon.svg'] = f'''<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108" role="img" aria-label="dit. Morse dot and dash">
+    files['assets/branding/app-icon.svg'] = f'''<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108" role="img" aria-label="morse dot and dash">
   <rect width="108" height="108" rx="24" fill="#E77860"/>
   <path fill="#FFFFFF" d="{MARK}"/>
 </svg>
@@ -87,8 +87,8 @@ def verify_wiring():
     assert app.get(namespace + 'icon') == '@mipmap/ic_launcher'
     assert app.get(namespace + 'roundIcon') == '@mipmap/ic_launcher'
     manifest = json.loads((ROOT / 'web/manifest.json').read_text())
-    assert manifest['name'] == 'dit. — Learn Morse code'
-    assert manifest['short_name'] == 'dit.'
+    assert manifest['name'] == 'morse — Learn Morse code'
+    assert manifest['short_name'] == 'morse'
     for entry in manifest['icons']:
         path = ROOT / 'web' / entry['src']
         data = path.read_bytes()

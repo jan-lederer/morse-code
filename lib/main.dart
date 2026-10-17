@@ -19,6 +19,77 @@ import 'learn_overview.dart';
 
 const coral = Color(0xFFE77860);
 const green = Color(0xFF648D78);
+
+enum _ExamChoice { resume, startNew }
+
+class _SavedExam {
+  const _SavedExam({
+    required this.question,
+    required this.mistakes,
+    required this.mode,
+    required this.remainingModes,
+    required this.target,
+    required this.sendIndex,
+    required this.pendingAdvance,
+  });
+
+  final int question, mistakes, sendIndex;
+  final PracticeMode mode;
+  final List<PracticeMode> remainingModes;
+  final String target;
+  final bool pendingAdvance;
+
+  Map<String, Object?> toJson() => {
+    'question': question,
+    'mistakes': mistakes,
+    'mode': mode.name,
+    'remainingModes': remainingModes.map((mode) => mode.name).toList(),
+    'target': target,
+    'sendIndex': sendIndex,
+    'pendingAdvance': pendingAdvance,
+  };
+
+  static _SavedExam? fromJson(Object? value) {
+    if (value is! Map<String, dynamic>) return null;
+    try {
+      final question = value['question'];
+      final mistakes = value['mistakes'];
+      final sendIndex = value['sendIndex'];
+      final target = value['target'];
+      final modeName = value['mode'];
+      final remainingNames = value['remainingModes'];
+      final pendingAdvance = value['pendingAdvance'];
+      if (question is! int || question < 1 || question > 20) return null;
+      if (mistakes is! int || mistakes < 0 || mistakes >= 3) return null;
+      if (sendIndex is! int || sendIndex != 0) return null;
+      if (target is! String || !morse.containsKey(target)) return null;
+      if (modeName is! String || remainingNames is! List) return null;
+      if (pendingAdvance is! bool ||
+          (pendingAdvance && question == 20) ||
+          value['status'] == 'passed' ||
+          value['status'] == 'failed') {
+        return null;
+      }
+      final mode = PracticeMode.values.byName(modeName);
+      final remainingModes = remainingNames
+          .map((name) => PracticeMode.values.byName(name as String))
+          .toList();
+      if (remainingModes.length != 20 - question) return null;
+      return _SavedExam(
+        question: question,
+        mistakes: mistakes,
+        mode: mode,
+        remainingModes: remainingModes,
+        target: target,
+        sendIndex: sendIndex,
+        pendingAdvance: pendingAdvance,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const DitApp());
@@ -52,7 +123,13 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       selectedLetter = '';
   bool hideHint = false;
   int sendIndex = 0;
+  int examQuestion = 0, examMistakes = 0;
+  String examStatus = '';
+  List<PracticeMode> examModes = [];
+  _SavedExam? _savedExam;
   PracticeMode practiceMode = PracticeMode.send;
+  bool get examSelected => group == '@exam';
+  bool get examRunning => examSelected && examStatus.isEmpty;
   String appVersion = '';
   Timer? commitTimer, holdTimer, advanceTimer;
   final signalFeedback = SignalFeedback(DeviceService.tone);
@@ -106,6 +183,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         learned
           ..clear()
           ..addAll(history.allLetters);
+        _savedExam = _SavedExam.fromJson(data['savedExam']);
       });
     } catch (_) {
       /* A damaged preference never prevents startup. */
@@ -113,6 +191,19 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   }
 
   void save() {
+    if (examSelected) {
+      _savedExam = examRunning
+          ? _SavedExam(
+              question: examQuestion,
+              mistakes: examMistakes,
+              mode: practiceMode,
+              remainingModes: List.of(examModes),
+              target: target[sendIndex],
+              sendIndex: 0,
+              pendingAdvance: result == 'correct',
+            )
+          : null;
+    }
     DeviceService.save(
       jsonEncode({
         'dark': dark,
@@ -124,6 +215,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         'correct': correct,
         'learned': learned.toList(),
         'progress': history.toJson(),
+        'savedExam': _savedExam?.toJson(),
       }),
     );
   }
@@ -338,12 +430,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           result = 'progress';
         } else {
           final isCorrect = letter == expected;
-          recordPractice(practiceMode, expected, isCorrect);
-          if (isCorrect) {
+          _recordPracticeAnswer(expected, isCorrect);
+          if (!examSelected && isCorrect) {
             sendIndex = 0;
             result = 'correct';
             buzz(65);
-          } else {
+          } else if (!examSelected) {
             sendIndex = 0;
             result = letter;
           }
@@ -390,18 +482,20 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
 
   void scheduleAdvance() {
     advanceTimer?.cancel();
-    if (page != 2 ||
-        (practiceMode != PracticeMode.send &&
-            practiceMode != PracticeMode.sendChoices) ||
-        result != 'correct' ||
-        practiceSuspended ||
-        dialogOpen) {
+    if (page != 2 || result != 'correct' || practiceSuspended || dialogOpen) {
+      return;
+    }
+    if (!examSelected &&
+        practiceMode != PracticeMode.send &&
+        practiceMode != PracticeMode.sendChoices) {
       return;
     }
     advanceTimer = Timer(const Duration(milliseconds: 650), () {
       if (mounted &&
           page == 2 &&
           result == 'correct' &&
+          examStatus != 'passed' &&
+          examStatus != 'failed' &&
           !practiceSuspended &&
           !dialogOpen) {
         nextTarget();
@@ -413,6 +507,23 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     advanceTimer?.cancel();
     cancelInput();
     stopPlayback();
+    if (examSelected) {
+      if (!examRunning || examQuestion >= 20 || examModes.isEmpty) return;
+      setState(() {
+        examQuestion++;
+        practiceMode = examModes.removeLast();
+        target = _pickPracticeTarget(previous: target);
+        sendIndex = 0;
+        result = '';
+        lastCode = '';
+      });
+      if (practiceMode == PracticeMode.send ||
+          practiceMode == PracticeMode.sendChoices) {
+        focus.requestFocus();
+      }
+      save();
+      return;
+    }
     final candidates = _practiceTargets().where((c) => c != target).toList();
     setState(() {
       target = candidates.isEmpty
@@ -428,6 +539,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       ? practiceWords
       : group == '@sentences'
       ? practiceSentences
+      : group == '@exam' || group == '@symbols'
+      ? morse.keys.toList()
       : group.split('');
 
   Text txt(
@@ -506,7 +619,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
     ),
   );
-  Widget logo({bool light = false}) => Row(
+  Widget logo({bool light = false, double size = 34}) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
@@ -544,9 +657,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       const SizedBox(width: 10),
       Text.rich(
         TextSpan(
-          text: 'dit',
+          text: 'morse',
           style: TextStyle(
-            fontSize: 34,
+            fontSize: size,
             fontWeight: FontWeight.w800,
             letterSpacing: -2,
             color: light ? Colors.white : ink,
@@ -574,7 +687,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       fontFamily: 'Roboto',
     );
     return MaterialApp(
-      title: 'dit. — Learn Morse',
+      title: 'morse',
       debugShowCheckedModeBanner: false,
       theme: theme,
       scaffoldMessengerKey: messenger,
@@ -693,7 +806,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        logo(light: true),
+        logo(light: true, size: 24),
         const SizedBox(height: 10),
         txt(
           'A LITTLE SIGNAL GOES A LONG WAY',
@@ -852,10 +965,17 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
             size: 11,
             weight: FontWeight.w600,
           ),
-        ] else if (compact)
-          SizedBox(height: 30, child: FittedBox(child: logo()))
-        else
-          logo(),
+        ] else
+          Flexible(
+            child: SizedBox(
+              height: compact ? 30 : null,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: logo(),
+              ),
+            ),
+          ),
         const Spacer(),
         if (wide) ...[
           Container(
@@ -1568,16 +1688,18 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     ],
   );
   static const lessons = [
-    ('Your first signals', 'ET', 'Two signals. A whole new language.'),
-    ('Build a rhythm', 'IANM', 'Connect two signals into something new.'),
-    (
-      'A little more conversation',
-      'SURWDKGO',
-      'Follow the branches. Find your flow.',
-    ),
-    ('The whole alphabet', 'HVFLPJBXCYZQ', 'Bring all 26 letters together.'),
+    ('The whole alphabet', alphabet, 'Bring all 26 letters together.'),
     ('Make it count', '0123456789', 'A few numbers for your vocabulary.'),
   ];
+
+  Map<String, String> get practiceGroups => {
+    alphabet: 'Alphabet · A–Z',
+    '0123456789': 'Numbers · 0–9',
+    '@symbols': 'All symbols · ${morse.length}',
+    '@words': 'Words · 100',
+    '@sentences': 'Sentences · 100',
+    '@exam': 'Exam · 20 questions',
+  };
 
   void startSession() {
     sessionAttempts = 0;
@@ -1607,6 +1729,10 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   }
 
   void restartPractice() {
+    if (examSelected) {
+      startExam();
+      return;
+    }
     advanceTimer?.cancel();
     cancelInput();
     stopPlayback();
@@ -1619,13 +1745,161 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     });
   }
 
+  String _pickPracticeTarget({String? previous}) {
+    final candidates = _practiceTargets()
+        .where((candidate) => candidate != previous)
+        .toList();
+    return candidates.isEmpty
+        ? _practiceTargets().first
+        : candidates[math.Random().nextInt(candidates.length)];
+  }
+
+  void startExam() {
+    advanceTimer?.cancel();
+    cancelInput();
+    stopPlayback();
+    final modes = <PracticeMode>[
+      for (var i = 0; i < 5; i++) PracticeMode.send,
+      for (var i = 0; i < 5; i++) PracticeMode.type,
+      for (var i = 0; i < 5; i++) PracticeMode.choices,
+      for (var i = 0; i < 5; i++) PracticeMode.sendChoices,
+    ]..shuffle(math.Random());
+    setState(() {
+      group = '@exam';
+      startSession();
+      examQuestion = 1;
+      examMistakes = 0;
+      examStatus = '';
+      examModes = modes;
+      practiceMode = examModes.removeLast();
+      target = _pickPracticeTarget();
+      sendIndex = 0;
+      result = '';
+      lastCode = '';
+      sequence = '';
+    });
+    if (practiceMode == PracticeMode.send ||
+        practiceMode == PracticeMode.sendChoices) {
+      focus.requestFocus();
+    }
+    save();
+  }
+
+  Future<void> chooseExam() async {
+    final saved = _savedExam;
+    final dialogContext = scaffold.currentContext;
+    if (dialogContext == null) return;
+    final choice = await showDialog<_ExamChoice>(
+      context: dialogContext,
+      builder: (context) => AlertDialog(
+        title: const Text('Exam'),
+        content: Text(
+          saved == null
+              ? 'No unfinished exam to resume.'
+              : 'Question ${saved.question} of 20 · ${saved.mistakes} ${saved.mistakes == 1 ? 'mistake' : 'mistakes'}. Starting a new exam discards it.',
+        ),
+        actions: [
+          TextButton(
+            key: const ValueKey('resume-last-exam'),
+            onPressed: saved == null
+                ? null
+                : () => Navigator.pop(context, _ExamChoice.resume),
+            child: const Text('Resume last exam'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const ValueKey('start-new-exam'),
+            onPressed: () => Navigator.pop(context, _ExamChoice.startNew),
+            child: const Text('Start new exam'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (choice == _ExamChoice.resume) {
+      resumeExam();
+    } else if (choice == _ExamChoice.startNew) {
+      startExam();
+    }
+  }
+
+  void resumeExam() {
+    final saved = _savedExam;
+    if (saved == null) return;
+    advanceTimer?.cancel();
+    cancelInput();
+    stopPlayback();
+    var question = saved.question;
+    var mode = saved.mode;
+    var resumedTarget = saved.target;
+    final modes = List<PracticeMode>.of(saved.remainingModes);
+    if (saved.pendingAdvance) {
+      question++;
+      mode = modes.removeLast();
+      final candidates = morse.keys
+          .where((character) => character != saved.target)
+          .toList();
+      resumedTarget = candidates[math.Random().nextInt(candidates.length)];
+    }
+    setState(() {
+      group = '@exam';
+      startSession();
+      examQuestion = question;
+      examMistakes = saved.mistakes;
+      examStatus = '';
+      examModes = modes;
+      practiceMode = mode;
+      target = resumedTarget;
+      sendIndex = 0;
+      sequence = '';
+      lastCode = '';
+      result = '';
+    });
+    if (practiceMode == PracticeMode.send ||
+        practiceMode == PracticeMode.sendChoices) {
+      focus.requestFocus();
+    }
+    save();
+  }
+
+  void _recordPracticeAnswer(String letter, bool isCorrect) {
+    recordPractice(practiceMode, letter, isCorrect);
+    if (!examSelected || examStatus.isNotEmpty) return;
+    result = isCorrect ? 'correct' : letter;
+    if (isCorrect) {
+      if (examQuestion == 20) {
+        examStatus = 'passed';
+        result = 'exam-passed';
+      }
+    } else {
+      examMistakes++;
+      if (examMistakes >= 3) {
+        examStatus = 'failed';
+        result = 'exam-failed';
+      }
+    }
+  }
+
   void changePracticeGroup(String value) {
     if (group == value) return;
-    group = value;
+    if (value == '@exam') {
+      chooseExam();
+      return;
+    }
+    setState(() {
+      group = value;
+      examStatus = '';
+      examQuestion = 0;
+      examMistakes = 0;
+    });
     restartPractice();
   }
 
   void changePracticeMode(PracticeMode mode) {
+    if (examRunning) return;
     if (mode == practiceMode) return;
     advanceTimer?.cancel();
     cancelInput();
@@ -1669,6 +1943,10 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           playing: playing,
           hideHint: hideHint,
           fourChoices: practiceMode == PracticeMode.sendChoices,
+          examMode: examSelected,
+          examQuestion: examQuestion,
+          examLives: 3 - examMistakes,
+          examStatus: examStatus,
           choices: _sendChoiceCodes(),
           target: target,
           hintCharacter: target[sendIndex],
@@ -1677,12 +1955,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           group: group,
           correct: sessionCorrect,
           attempts: sessionAttempts,
-          groups: {
-            alphabet: 'All letters',
-            for (final lesson in lessons) lesson.$2: lesson.$1,
-            '@words': 'Real words',
-            '@sentences': 'Sentences',
-          },
+          groups: practiceGroups,
           onGroup: changePracticeGroup,
           onHint: () {
             setState(() => hideHint = !hideHint);
@@ -1705,9 +1978,11 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                 sendIndex++;
                 result = 'progress';
               } else {
-                recordPractice(practiceMode, expected, isCorrect);
-                if (isCorrect) sendIndex = 0;
-                result = isCorrect ? 'correct' : symbols(code);
+                _recordPracticeAnswer(expected, isCorrect);
+                if (!examSelected) {
+                  if (isCorrect) sendIndex = 0;
+                  result = isCorrect ? 'correct' : symbols(code);
+                }
               }
             });
             save();
@@ -1717,20 +1992,19 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           onNewSession: restartPractice,
         )
       : RecognitionWorkspace(
-          groups: {
-            alphabet: 'All letters',
-            for (final lesson in lessons) lesson.$2: lesson.$1,
-            '@words': 'Real words',
-            '@sentences': 'Sentences',
-          },
+          groups: practiceGroups,
           initialGroup: group,
           fourChoices: practiceMode == PracticeMode.choices,
           sound: sound,
           vibration: vibration,
           dark: dark,
           hideHint: hideHint,
+          examMode: examSelected,
+          examQuestion: examQuestion,
+          examLives: 3 - examMistakes,
+          examStatus: examStatus,
           suspended: practiceSuspended || dialogOpen,
-          sessionId: sessionId,
+          sessionId: examSelected ? '$sessionId:$examQuestion' : sessionId,
           correct: sessionCorrect,
           attempts: sessionAttempts,
           onMode: changePracticeMode,
@@ -1743,9 +2017,10 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           onAnswer: (letter, isCorrect) {
             if (!mounted) return;
             setState(() {
-              recordPractice(practiceMode, letter, isCorrect);
+              _recordPracticeAnswer(letter, isCorrect);
             });
             save();
+            if (examSelected && isCorrect && examRunning) scheduleAdvance();
           },
         );
 
@@ -1873,7 +2148,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   );
   Widget footer() => Row(
     children: [
-      txt('dit.', size: 18, weight: FontWeight.w800, color: muted),
+      txt('morse', size: 18, weight: FontWeight.w800, color: muted),
       const SizedBox(width: 12),
       Expanded(
         child: txt(

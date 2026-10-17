@@ -8,6 +8,9 @@ import 'practice_controls.dart';
 class PracticeWorkspace extends StatelessWidget {
   final bool dark, pressed, holdDash, playing, hideHint;
   final bool fourChoices;
+  final bool examMode;
+  final int examQuestion, examLives;
+  final String examStatus;
   final String target, path, result, group, hintCharacter;
   final int correct, attempts;
   final Map<String, String> groups;
@@ -28,6 +31,10 @@ class PracticeWorkspace extends StatelessWidget {
     required this.playing,
     required this.hideHint,
     this.fourChoices = false,
+    this.examMode = false,
+    this.examQuestion = 0,
+    this.examLives = 3,
+    this.examStatus = '',
     required this.target,
     this.hintCharacter = '',
     required this.path,
@@ -101,6 +108,7 @@ class PracticeWorkspace extends StatelessWidget {
                   onMode: onMode,
                   onGroup: onGroup,
                   onNewSession: onNewSession,
+                  exam: examMode,
                 ),
                 const SizedBox(height: 8),
                 Expanded(
@@ -128,7 +136,17 @@ class PracticeWorkspace extends StatelessWidget {
                         ),
                 ),
                 const SizedBox(height: 6),
-                PracticeStats(correct: correct, attempts: attempts),
+                SizedBox(
+                  key: const ValueKey('practice-stats'),
+                  height: 34,
+                  child: PracticeStats(
+                    correct: correct,
+                    attempts: attempts,
+                    examQuestion: examMode ? examQuestion : null,
+                    examLives: examLives,
+                    examStatus: examStatus,
+                  ),
+                ),
               ],
             );
           },
@@ -206,7 +224,11 @@ class PracticeWorkspace extends StatelessWidget {
             child: Semantics(
               liveRegion: true,
               child: label(
-                result == 'progress'
+                examStatus == 'failed'
+                    ? 'Exam failed · three mistakes'
+                    : examStatus == 'passed'
+                    ? 'Exam passed!'
+                    : result == 'progress'
                     ? 'Good. Send the next letter.'
                     : result.isEmpty
                     ? 'Pause to send your letter'
@@ -263,7 +285,7 @@ class PracticeWorkspace extends StatelessWidget {
       const SizedBox(height: 5),
       Expanded(
         child: IgnorePointer(
-          ignoring: result == 'correct',
+          ignoring: _locked,
           child: MorseKey(
             dark: dark,
             pressed: pressed,
@@ -285,13 +307,13 @@ class PracticeWorkspace extends StatelessWidget {
             const SizedBox(width: 6),
             IconButton.filledTonal(
               tooltip: 'Finish letter',
-              onPressed: onCommit,
+              onPressed: _locked ? null : onCommit,
               style: IconButton.styleFrom(backgroundColor: surface),
               icon: Icon(Icons.check, size: 19, color: ink),
             ),
             IconButton(
               tooltip: 'Skip letter',
-              onPressed: onNext,
+              onPressed: examMode ? null : onNext,
               icon: Icon(Icons.skip_next_outlined, size: 23, color: muted),
             ),
           ],
@@ -300,25 +322,45 @@ class PracticeWorkspace extends StatelessWidget {
     ],
   );
 
-  Widget _choices() => GridView.count(
-    crossAxisCount: 2,
-    childAspectRatio: 1.6,
-    mainAxisSpacing: 8,
-    crossAxisSpacing: 8,
-    physics: const NeverScrollableScrollPhysics(),
-    children: choices
-        .map(
-          (code) => OutlinedButton(
-            key: ValueKey('send-choice-$code'),
-            onPressed: result == 'correct' ? null : () => onChoice(code),
-            child: Text(symbols(code), style: const TextStyle(fontSize: 24)),
-          ),
-        )
-        .toList(),
+  Widget _choices() => LayoutBuilder(
+    builder: (context, constraints) {
+      const gap = 8.0;
+      final tileWidth = (constraints.maxWidth - gap) / 2;
+      final tileHeight = (constraints.maxHeight - gap) / 2;
+      return GridView.count(
+        crossAxisCount: 2,
+        childAspectRatio: tileWidth / tileHeight,
+        mainAxisSpacing: gap,
+        crossAxisSpacing: gap,
+        physics: const NeverScrollableScrollPhysics(),
+        children: choices
+            .map(
+              (code) => OutlinedButton(
+                key: ValueKey('send-choice-$code'),
+                onPressed: _locked ? null : () => onChoice(code),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: dark
+                      ? const Color(0xFF322B28)
+                      : const Color(0xFFFFF1EB),
+                  foregroundColor: accent,
+                  side: BorderSide(color: accent.withValues(alpha: .5)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  symbols(code),
+                  style: const TextStyle(fontSize: 32),
+                ),
+              ),
+            )
+            .toList(),
+      );
+    },
   );
   Widget manualButton(String text, IconData icon, VoidCallback onTap) =>
       FilledButton.icon(
-        onPressed: result == 'correct' ? null : onTap,
+        onPressed: _locked ? null : onTap,
         icon: Icon(icon, size: 12),
         label: Text(text),
         style: FilledButton.styleFrom(
@@ -333,4 +375,7 @@ class PracticeWorkspace extends StatelessWidget {
           ),
         ),
       );
+
+  bool get _locked =>
+      result == 'correct' || result == 'exam-passed' || result == 'exam-failed';
 }

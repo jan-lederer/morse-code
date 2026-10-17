@@ -4,6 +4,12 @@ import 'package:dit_morse/main.dart';
 import 'package:dit_morse/morse.dart';
 
 void main() {
+  testWidgets('app brand displays morse instead of dit', (tester) async {
+    await tester.pumpWidget(const DitApp());
+    await tester.pumpAndSettle();
+    expect(find.text('morse.'), findsOneWidget);
+    expect(find.text('dit.'), findsNothing);
+  });
   test('all standard characters have unique signals and round-trip', () {
     expect(morse.length, 36);
     expect(morse.values.toSet().length, 36);
