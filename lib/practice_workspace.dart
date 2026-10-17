@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'morse.dart';
 import 'morse_key.dart';
+import 'practice_controls.dart';
 
 /// Keeps the target, key, feedback, and progress in one bounded viewport.
 class PracticeWorkspace extends StatelessWidget {
@@ -10,6 +11,7 @@ class PracticeWorkspace extends StatelessWidget {
   final int correct, attempts, learned;
   final Map<String, String> groups;
   final ValueChanged<String> onGroup;
+  final ValueChanged<PracticeMode> onMode;
   final VoidCallback onHint, onListen, onNext, onDot, onDash, onCommit;
   final PointerDownEventListener onDown;
   final PointerUpEventListener onUp;
@@ -39,6 +41,7 @@ class PracticeWorkspace extends StatelessWidget {
     required this.onDot,
     required this.onDash,
     required this.onCommit,
+    required this.onMode,
   });
   static const accent = Color(0xFFE77860), green = Color(0xFF648D78);
   Color get ink => dark ? const Color(0xFFF0F1EC) : const Color(0xFF26302F);
@@ -80,39 +83,12 @@ class PracticeWorkspace extends StatelessWidget {
             return Column(
               key: const ValueKey('practice-workspace'),
               children: [
-                SizedBox(
-                  height: 36,
-                  child: Row(
-                    children: [
-                      label('Practice', size: 18, weight: FontWeight.w600),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: DropdownButton<String>(
-                          key: const ValueKey('practice-group'),
-                          value: group,
-                          isExpanded: true,
-                          dropdownColor: surface,
-                          underline: const SizedBox(),
-                          icon: Icon(Icons.expand_more, size: 18, color: muted),
-                          items: groups.entries
-                              .map(
-                                (entry) => DropdownMenuItem(
-                                  value: entry.key,
-                                  child: label(
-                                    entry.value,
-                                    size: 12,
-                                    color: muted,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            if (value != null) onGroup(value);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
+                PracticeHeader(
+                  mode: PracticeMode.send,
+                  group: group,
+                  groups: groups,
+                  onMode: onMode,
+                  onGroup: onGroup,
                 ),
                 const SizedBox(height: 8),
                 Expanded(
@@ -134,24 +110,10 @@ class PracticeWorkspace extends StatelessWidget {
                         ),
                 ),
                 const SizedBox(height: 6),
-                SizedBox(
-                  height: 34,
-                  child: Row(
-                    children: [
-                      stat(
-                        '$correct',
-                        'Correct',
-                        key: const ValueKey('practice-correct'),
-                      ),
-                      stat(
-                        attempts == 0
-                            ? '0%'
-                            : '${(correct / attempts * 100).round()}%',
-                        'Accuracy',
-                      ),
-                      stat('$learned', 'Practiced'),
-                    ],
-                  ),
+                PracticeStats(
+                  correct: correct,
+                  attempts: attempts,
+                  learned: learned,
                 ),
               ],
             );
@@ -210,45 +172,11 @@ class PracticeWorkspace extends StatelessWidget {
                 ),
         ),
         if (!horizontal) SizedBox(height: 30, child: Center(child: hint())),
-        SizedBox(
-          height: 32,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: TextButton.icon(
-                  onPressed: onListen,
-                  icon: Icon(
-                    playing
-                        ? Icons.stop_circle_outlined
-                        : Icons.headphones_outlined,
-                    size: 16,
-                    color: muted,
-                  ),
-                  label: label(
-                    playing ? 'Stop' : 'Listen',
-                    size: 11,
-                    color: muted,
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: hideHint ? 'Show hint' : 'Hide hint',
-                onPressed: onHint,
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  hideHint
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  size: 18,
-                  color: muted,
-                ),
-              ),
-            ],
-          ),
+        PracticeSignalActions(
+          playing: playing,
+          hideHint: hideHint,
+          onListen: onListen,
+          onHint: onHint,
         ),
         SizedBox(
           height: 24,
@@ -364,14 +292,4 @@ class PracticeWorkspace extends StatelessWidget {
           ),
         ),
       );
-  Widget stat(String value, String title, {Key? key}) => Expanded(
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        label(value, key: key, size: 17, weight: FontWeight.w600),
-        const SizedBox(width: 6),
-        Flexible(child: label(title, size: 9, color: muted)),
-      ],
-    ),
-  );
 }

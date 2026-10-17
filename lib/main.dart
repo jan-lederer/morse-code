@@ -10,6 +10,9 @@ import 'morse_tree.dart';
 import 'touch_workspace.dart';
 import 'practice_workspace.dart';
 import 'platform_service.dart';
+import 'signal_feedback.dart';
+import 'recognition_workspace.dart';
+import 'practice_controls.dart';
 
 const coral = Color(0xFFE77860);
 const green = Color(0xFF648D78);
@@ -42,7 +45,11 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       search = '',
       selectedLetter = '';
   bool hideHint = false;
+  PracticeMode practiceMode = PracticeMode.send;
+  String appVersion = '';
   Timer? commitTimer, holdTimer, advanceTimer;
+  final signalFeedback = SignalFeedback(DeviceService.tone);
+  SignalTone? inputTone;
   bool practiceSuspended = false, dialogOpen = false;
   bool holdDash = false;
   int? activePointer;
@@ -68,6 +75,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _load();
+    DeviceService.version().then((version) {
+      if (mounted && version != null) setState(() => appVersion = version);
+    });
   }
 
   Future<void> _load() async {
@@ -121,7 +131,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     holdTimer?.cancel();
     advanceTimer?.cancel();
     playbackId++;
-    DeviceService.tone(false);
+    DeviceService.stopPattern();
+    signalFeedback.cancel();
     WidgetsBinding.instance.removeObserver(this);
     focus.dispose();
     super.dispose();
@@ -156,7 +167,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
 
   void stopPlayback() {
     playbackId++;
-    DeviceService.tone(false);
+    DeviceService.stopPattern();
+    signalFeedback.cancel();
+    inputTone = null;
     if (playing && mounted) setState(() => playing = false);
   }
 
@@ -172,15 +185,24 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       sound = true;
     });
     save();
+    final lead = await DeviceService.playPattern(
+      code,
+      sound: true,
+      vibration: false,
+    );
+    if (!mounted || id != playbackId) return;
+    if (lead < 0) {
+      stopPlayback();
+      return;
+    }
+    if (lead > 0) await Future<void>.delayed(Duration(milliseconds: lead));
     for (final char in code.split('')) {
       if (!mounted || id != playbackId) return;
       if (char == '.' || char == '-') {
-        DeviceService.tone(true);
         await Future<void>.delayed(
           Duration(milliseconds: char == '.' ? 100 : 300),
         );
         if (!mounted || id != playbackId) return;
-        DeviceService.tone(false);
         await Future<void>.delayed(const Duration(milliseconds: 100));
       } else {
         await Future<void>.delayed(
@@ -194,8 +216,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   void cancelInput() {
     commitTimer?.cancel();
     holdTimer?.cancel();
+    signalFeedback.cancel();
+    inputTone = null;
     activePointer = null;
-    DeviceService.tone(false);
     if (mounted) {
       setState(() {
         pressed = false;
@@ -209,11 +232,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         dialogOpen ||
         practiceSuspended ||
         (page != 1 && page != 2) ||
-        (page == 2 && result == 'correct')) {
+        (page == 2 &&
+            (practiceMode != PracticeMode.send || result == 'correct'))) {
       return;
     }
     commitTimer?.cancel();
-    stopPlayback();
+    if (playing) stopPlayback();
     setState(() {
       pressed = true;
       holdDash = false;
@@ -221,7 +245,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     holdTimer = Timer(Duration(milliseconds: threshold), () {
       if (mounted && pressed) setState(() => holdDash = true);
     });
-    if (sound) DeviceService.tone(true);
+    if (sound) {
+      inputTone = signalFeedback.press();
+    }
     buzz(15);
   }
 
@@ -230,7 +256,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     holdTimer?.cancel();
     // Commit the same signal shown by the hold preview.
     final signal = holdDash ? '-' : '.';
-    DeviceService.tone(false);
+    if (cancelled) {
+      signalFeedback.cancel();
+    } else if (inputTone case final tone?) {
+      signalFeedback.release(tone, dash: holdDash);
+    }
+    inputTone = null;
     setState(() => pressed = false);
     if (!cancelled) {
       addSignal(signal);
@@ -271,17 +302,11 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
 
   void manual(String signal) {
     if (page == 2 && result == 'correct') return;
-    stopPlayback();
+    if (playing) stopPlayback();
     addSignal(signal);
     if (sound) {
-      final id = playbackId;
-      DeviceService.tone(true);
-      Future<void>.delayed(
-        Duration(milliseconds: signal == '.' ? 80 : 240),
-        () {
-          if (id == playbackId && !pressed) DeviceService.tone(false);
-        },
-      );
+      final tone = signalFeedback.press();
+      signalFeedback.release(tone, dash: signal == '-');
     }
   }
 
@@ -354,7 +379,11 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
 
   void scheduleAdvance() {
     advanceTimer?.cancel();
-    if (page != 2 || result != 'correct' || practiceSuspended || dialogOpen) {
+    if (page != 2 ||
+        practiceMode != PracticeMode.send ||
+        result != 'correct' ||
+        practiceSuspended ||
+        dialogOpen) {
       return;
     }
     advanceTimer = Timer(const Duration(milliseconds: 650), () {
@@ -553,7 +582,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                             onKeyEvent: (node, event) {
                               if (event.logicalKey !=
                                       LogicalKeyboardKey.space ||
-                                  (page != 1 && page != 2)) {
+                                  (page != 1 && page != 2) ||
+                                  (page == 2 &&
+                                      practiceMode != PracticeMode.send)) {
                                 return KeyEventResult.ignored;
                               }
                               if (event is KeyDownEvent) begin();
@@ -1528,6 +1559,25 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     ('The whole alphabet', 'HVFLPJBXCYZQ', 'Bring all 26 letters together.'),
     ('Make it count', '0123456789', 'A few numbers for your vocabulary.'),
   ];
+
+  void changePracticeMode(PracticeMode mode) {
+    advanceTimer?.cancel();
+    cancelInput();
+    stopPlayback();
+    setState(() {
+      practiceMode = mode;
+      result = '';
+      lastCode = '';
+    });
+    if (mode == PracticeMode.send) focus.requestFocus();
+  }
+
+  void openRecognition({String? characters, bool fourChoices = false}) {
+    if (characters != null) group = characters;
+    switchPage(2);
+    changePracticeMode(fourChoices ? PracticeMode.choices : PracticeMode.type);
+  }
+
   Widget learnPage() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -1596,6 +1646,38 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           ),
         ),
       ),
+      const SizedBox(height: 20),
+      panel(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            txt('Recognize signals', size: 18, weight: FontWeight.w600),
+            const SizedBox(height: 8),
+            txt(
+              'See, hear, or feel a signal. Name the character.',
+              size: 12,
+              color: muted,
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                action(
+                  'Type an answer',
+                  () => openRecognition(),
+                  icon: Icons.edit_outlined,
+                ),
+                action(
+                  '4 choices',
+                  () => openRecognition(fourChoices: true),
+                  icon: Icons.grid_view_outlined,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
       const SizedBox(height: 32),
       heading(
         'Your learning path',
@@ -1655,6 +1737,11 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                         txt(l.$1, size: 16, weight: FontWeight.w600),
                         const SizedBox(height: 9),
                         txt(l.$3, size: 11, color: muted, height: 1.7),
+                        TextButton.icon(
+                          onPressed: () => openRecognition(characters: l.$2),
+                          icon: const Icon(Icons.hearing_outlined, size: 16),
+                          label: const Text('Recognize signals'),
+                        ),
                         const SizedBox(height: 23),
                         Row(
                           children: [
@@ -1687,40 +1774,75 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       gentleTip(),
     ],
   );
-  Widget practicePage() => PracticeWorkspace(
-    dark: dark,
-    pressed: pressed,
-    holdDash: holdDash,
-    playing: playing,
-    hideHint: hideHint,
-    target: target,
-    path: visibleCode,
-    result: result,
-    group: group,
-    correct: correct,
-    attempts: attempts,
-    learned: learned.length,
-    groups: {
-      alphabet: 'All letters',
-      for (final lesson in lessons) lesson.$2: lesson.$1,
-    },
-    onGroup: (value) {
-      group = value;
-      nextTarget();
-    },
-    onHint: () {
-      setState(() => hideHint = !hideHint);
-      save();
-    },
-    onListen: () => listen(morse[target]!),
-    onNext: nextTarget,
-    onDown: pointerDown,
-    onUp: pointerUp,
-    onCancel: (event) => pointerUp(event, cancelled: true),
-    onDot: () => manual('.'),
-    onDash: () => manual('-'),
-    onCommit: commit,
-  );
+  Widget practicePage() => practiceMode == PracticeMode.send
+      ? PracticeWorkspace(
+          dark: dark,
+          pressed: pressed,
+          holdDash: holdDash,
+          playing: playing,
+          hideHint: hideHint,
+          target: target,
+          path: visibleCode,
+          result: result,
+          group: group,
+          correct: correct,
+          attempts: attempts,
+          learned: learned.length,
+          groups: {
+            alphabet: 'All letters',
+            for (final lesson in lessons) lesson.$2: lesson.$1,
+          },
+          onGroup: (value) {
+            group = value;
+            nextTarget();
+          },
+          onHint: () {
+            setState(() => hideHint = !hideHint);
+            save();
+          },
+          onListen: () => listen(morse[target]!),
+          onNext: nextTarget,
+          onDown: pointerDown,
+          onUp: pointerUp,
+          onCancel: (event) => pointerUp(event, cancelled: true),
+          onDot: () => manual('.'),
+          onDash: () => manual('-'),
+          onCommit: commit,
+          onMode: changePracticeMode,
+        )
+      : RecognitionWorkspace(
+          groups: {
+            alphabet: 'All letters',
+            for (final lesson in lessons) lesson.$2: lesson.$1,
+          },
+          initialGroup: group,
+          fourChoices: practiceMode == PracticeMode.choices,
+          sound: sound,
+          vibration: vibration,
+          dark: dark,
+          hideHint: hideHint,
+          suspended: practiceSuspended || dialogOpen,
+          correct: correct,
+          attempts: attempts,
+          learned: learned.length,
+          onMode: changePracticeMode,
+          onGroup: (value) => setState(() => group = value),
+          onHint: () {
+            setState(() => hideHint = !hideHint);
+            save();
+          },
+          onAnswer: (letter, isCorrect) {
+            if (!mounted) return;
+            setState(() {
+              attempts++;
+              if (isCorrect) {
+                correct++;
+                learned.add(letter);
+              }
+            });
+            save();
+          },
+        );
 
   Widget alphabetPage() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1931,9 +2053,16 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               color: muted,
               height: 1.7,
             ),
+            const SizedBox(height: 8),
+            Text(
+              appVersion.isEmpty ? 'Version …' : 'Version $appVersion',
+              key: const ValueKey('app-version'),
+              style: TextStyle(fontSize: 11, color: muted),
+            ),
             const SizedBox(height: 20),
             feedbackRow(Icons.volume_up_outlined, 'Sound', sound, (v) {
               setState(() => sound = v);
+              if (!v) stopPlayback();
               update(() {});
               save();
             }),
@@ -2002,7 +2131,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   void dialog(String eyebrow, String title, Widget content) {
     final context = scaffold.currentContext;
     if (context == null) return;
-    dialogOpen = true;
+    setState(() => dialogOpen = true);
     advanceTimer?.cancel();
     showDialog<void>(
       context: context,
@@ -2055,7 +2184,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       ),
     ).whenComplete(() {
       if (!mounted) return;
-      dialogOpen = false;
+      setState(() => dialogOpen = false);
       scheduleAdvance();
     });
   }

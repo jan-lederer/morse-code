@@ -14,15 +14,73 @@
   <title>dit. — Learn Morse code</title>
   <style>html,body{margin:0;background:#f6f5f1}#loading{height:100vh;display:grid;place-content:center;text-align:center;font-family:Arial,sans-serif;color:#26302f}#loading b{font-size:64px;letter-spacing:-4px}#loading b span{color:#e77860}#loading p{color:#8a918b;font-size:12px;letter-spacing:2px}</style>
   <script>
-    let ditAudio, ditOscillator;
+    let ditAudio, ditOscillator, ditPatternOscillator, ditPatternToken = 0;
     window.ditLoad = () => {try{return localStorage.getItem('dit-state')}catch{return null}};
+    window.ditVersion = () => fetch('version.json', {cache:'no-store'}).then(r=>r.json()).then(v=>`${v.version} (${v.build_number})`).catch(()=>'');
     window.ditSave = value => {try{localStorage.setItem('dit-state',value)}catch{}};
     window.ditCanVibrate = () => typeof navigator.vibrate === 'function';
     window.ditVibrate = duration => {try{navigator.vibrate?.(duration)}catch{}};
+    window.ditCancelVibration = () => {try{navigator.vibrate?.(0)}catch{}};
+    window.ditStopPattern = () => {
+      ditPatternToken++;
+      if(ditPatternOscillator){try{ditPatternOscillator.stop();ditPatternOscillator.disconnect()}catch{}ditPatternOscillator=null}
+      window.ditCancelVibration();
+    };
+    window.ditPlayPattern = async (code, sound, vibration) => {
+      window.ditStopPattern();
+      window.ditTone(false);
+      const token=ditPatternToken;
+      try {
+        if(sound){
+          ditAudio ||= new (window.AudioContext || window.webkitAudioContext)();
+          await ditAudio.resume();
+          if(token!==ditPatternToken)return -1;
+        }
+        const segments=[{duration:150,active:false}];
+        const append=(duration,active)=>{
+          const last=segments[segments.length-1];
+          if(last.active===active)last.duration+=duration;
+          else segments.push({duration,active});
+        };
+        for(const symbol of code.slice(0,200)){
+          if(symbol==='.'||symbol==='-'){append(symbol==='.'?100:300,true);append(100,false)}
+          else append(symbol==='/'?400:200,false);
+        }
+        const started=performance.now();
+        if(sound){
+          const gain=ditAudio.createGain();
+          const start=ditAudio.currentTime;
+          gain.gain.setValueAtTime(0,start);
+          let cursor=start;
+          for(const segment of segments){
+            if(segment.active){
+              gain.gain.setValueAtTime(0,cursor);
+              gain.gain.linearRampToValueAtTime(.12,cursor+.002);
+              gain.gain.setValueAtTime(.12,cursor+segment.duration/1000-.002);
+              gain.gain.linearRampToValueAtTime(0,cursor+segment.duration/1000);
+            }
+            cursor+=segment.duration/1000;
+          }
+          const oscillator=ditAudio.createOscillator();
+          oscillator.frequency.value=620;
+          oscillator.connect(gain);gain.connect(ditAudio.destination);
+          oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();if(ditPatternOscillator===oscillator)ditPatternOscillator=null};
+          ditPatternOscillator=oscillator;
+          oscillator.start(start);oscillator.stop(cursor);
+        }
+        if(vibration&&navigator.vibrate){
+          const timings=segments.map(s=>s.duration);
+          timings[0]=Math.max(0,timings[0]-(performance.now()-started));
+          navigator.vibrate(timings);
+        }
+        return Math.max(0,Math.round(150-(performance.now()-started)));
+      }catch{return -1}
+    };
     window.ditTone = enabled => {
       try {
         if(ditOscillator){ditOscillator.stop();ditOscillator.disconnect();ditOscillator=null}
         if(!enabled)return;
+        window.ditStopPattern();
         ditAudio ||= new (window.AudioContext || window.webkitAudioContext)();
         ditAudio.resume();
         const gain=ditAudio.createGain();gain.gain.value=.12;
@@ -30,7 +88,7 @@
         ditOscillator.connect(gain);gain.connect(ditAudio.destination);ditOscillator.start();
       }catch{}
     };
-    window.addEventListener('blur',()=>window.ditTone(false));
+    window.addEventListener('blur',()=>{window.ditStopPattern();window.ditTone(false)});
     window.addEventListener('flutter-first-frame',()=>document.getElementById('loading')?.remove());
   </script>
 </head>

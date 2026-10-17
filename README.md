@@ -4,6 +4,26 @@ A Flutter app for Android and web. Explore the full Morse tree, tap for a dot,
 hold for a dash, and pause to write a letter. Includes five learning chapters,
 practice with progress tracking, an alphabet reference, light/dark themes,
 optional sound and vibration, and adjustable input timing.
+Quick taps play at least 100ms of tone so dots remain audible. Rapid signals
+queue with 100ms of silence between them; dashes play for at least 300ms.
+Two fast taps remain two distinct dots, even with no pause between taps.
+Input and letter recognition stay immediate. Cancelling input or leaving the
+app stops audio and clears pending signals.
+Listen/recognition playback prepares a complete device-scheduled sound and
+vibration pattern with 150ms of silent startup time. Its 100ms gaps are encoded
+in the audio buffer, so cold audio startup or delayed UI frames cannot join dots.
+
+Learn and Practice also offer **Recognize signals**: identify a character from
+visible dots/dashes and a flashing light, sound, vibration, or a combination.
+Type a letter/number or choose from four distinct answers. Replay or skip a
+signal and retry mistakes. Correct answers advance automatically after 650ms.
+The Practice mode menu switches between sending, typing, and four choices in
+the same screen, sharing Settings, the eye button, group selection, and stats.
+Typed answers keep the keyboard open across questions until you dismiss it.
+Four choices fill the available width in a large 2×2 grid.
+Lesson shortcuts use that chapter's characters; short chapters fill their four
+answer choices with other letters or numbers. Answers count toward saved
+practice progress. Playback stops when leaving the exercise or backgrounding.
 
 On phones and tablets, the full tree and touch key share a fixed viewport.
 Every branch stays visible in portrait and landscape, and the path previews a
@@ -18,6 +38,7 @@ restarts until you toggle it again.
 
 Settings and practice progress are stored locally. Android runs offline.
 Vibration requires compatible hardware; browser vibration support varies.
+Settings displays the installed app version and build number (also on web).
 
 ## Build and verify
 
@@ -34,6 +55,10 @@ The Android package is `studio.dit.dit_morse`. Version/build number comes from
 key, so retain that key for updates. Configure a private release key before a
 store release. An update requires the same package and signing key and a higher
 build number than the installed app.
+
+Playback scheduler checks: `node tests/web_pattern_test.mjs`. In this workspace,
+`python3 tools/verify_signal_pattern.py` uses the cached Kotlin compiler to test
+the actual Android PCM/haptic generator and export an A/I waveform preview.
 
 The Android device bridge provides local preferences, a 620 Hz tone, and optional
 one-shot vibration. Web uses Web Audio and browser-local storage. No account or
