@@ -346,29 +346,46 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
           onListen: _play,
           onHint: widget.onHint ?? () => setState(() => _hideHint = !_hideHint),
         ),
-        SizedBox(
-          height: 28,
-          child: Center(
-            child: Semantics(
-              liveRegion: true,
-              child: Text(
-                widget.examStatus == 'failed'
-                    ? 'Exam failed · three mistakes'
-                    : widget.examStatus == 'passed'
-                    ? 'Exam passed!'
-                    : _feedback,
-                key: const ValueKey('recognition-feedback'),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: _correct ? const Color(0xFF648D78) : _muted,
+        if (widget.examStatus.isNotEmpty)
+          SizedBox(
+            height: 32,
+            child: Center(
+              child: TextButton.icon(
+                key: const ValueKey('terminal-new-exam'),
+                onPressed: widget.onNewSession,
+                icon: const Icon(Icons.refresh, size: 15),
+                label: const Text('New exam'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                ),
+              ),
+            ),
+          )
+        else
+          SizedBox(
+            height: 28,
+            child: Center(
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  widget.examStatus == 'failed'
+                      ? 'Exam failed · three mistakes'
+                      : widget.examStatus == 'passed'
+                      ? 'Exam passed!'
+                      : _feedback,
+                  key: const ValueKey('recognition-feedback'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: _correct ? const Color(0xFF648D78) : _muted,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     ),
   );

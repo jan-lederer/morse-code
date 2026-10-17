@@ -4,6 +4,16 @@ Learn Morse code one signal at a time. **morse** is a small Flutter app for
 Android and the web, with an interactive Morse tree and focused listening and
 sending practice.
 
+## Screenshots
+
+| Practice · light | Morse tree |
+| --- | --- |
+| <img src="screenshots/practice-light.png" alt="Morse sending practice in the light theme" width="300"> | <img src="screenshots/morse-tree.png" alt="Interactive Morse tree" width="300"> |
+
+| Practice · dark | Listening · four choices |
+| --- | --- |
+| <img src="screenshots/practice-dark.png" alt="Morse sending practice in the dark theme" width="300"> | <img src="screenshots/listening-choices.png" alt="Listening practice with four answer choices" width="300"> |
+
 ## Learn and practise
 
 - Explore the complete Morse tree and practise dots, dashes, and letter entry.
@@ -31,7 +41,7 @@ flutter build web --release --no-web-resources-cdn
 ```
 
 The Android application ID is `studio.dit.dit_morse`. Its version and build
-number come from `pubspec.yaml` (currently `1.1.2+19`). Release builds use the
+number come from `pubspec.yaml` (currently `1.2.0+21`). Release builds use the
 generated Android debug signing key; keep that key to install updates. Store
 releases should use a private release key. Updates need the same application
 ID and signing key, plus a higher build number.

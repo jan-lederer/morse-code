@@ -334,6 +334,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     if (pressed ||
         dialogOpen ||
         practiceSuspended ||
+        (page == 2 && examSelected && examStatus.isNotEmpty) ||
         (page != 1 && page != 2) ||
         (page == 2 &&
             (practiceMode != PracticeMode.send || result == 'correct'))) {
@@ -387,6 +388,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
 
   void addSignal(String value) {
     commitTimer?.cancel();
+    if (page == 2 && examSelected && examStatus.isNotEmpty) return;
     if (page == 2 && result == 'correct') {
       return;
     }
@@ -404,6 +406,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   }
 
   void manual(String signal) {
+    if (page == 2 && examSelected && examStatus.isNotEmpty) return;
     if (page == 2 && result == 'correct') return;
     if (playing) stopPlayback();
     addSignal(signal);
@@ -415,6 +418,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
 
   void commit() {
     commitTimer?.cancel();
+    if (page == 2 && examSelected && examStatus.isNotEmpty) return;
     if (sequence.isEmpty) return;
     final letter = decode(sequence);
     if (letter.isEmpty) {
@@ -1900,8 +1904,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                 content: const Text('You completed all 20 questions.'),
                 actions: [
                   FilledButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Done'),
+                    key: const ValueKey('exam-passed-new-exam'),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      restartPractice();
+                    },
+                    child: const Text('Start new exam'),
                   ),
                 ],
               ),
@@ -2006,6 +2014,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           onDash: () => manual('-'),
           onCommit: commit,
           onChoice: (code) {
+            if (examSelected && examStatus.isNotEmpty) return;
             if (result == 'correct') return;
             final isCorrect = code == morse[target[sendIndex]];
             setState(() {

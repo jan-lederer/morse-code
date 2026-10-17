@@ -218,35 +218,52 @@ class PracticeWorkspace extends StatelessWidget {
           onListen: onListen,
           onHint: onHint,
         ),
-        SizedBox(
-          height: 24,
-          child: Center(
-            child: Semantics(
-              liveRegion: true,
-              child: label(
-                examStatus == 'failed'
-                    ? 'Exam failed · three mistakes'
-                    : examStatus == 'passed'
-                    ? 'Exam passed!'
-                    : result == 'progress'
-                    ? 'Good. Send the next letter.'
-                    : result.isEmpty
-                    ? 'Pause to send your letter'
-                    : result == 'correct'
-                    ? 'Correct! Next letter…'
-                    : 'You sent $result. Try $target again.',
-                key: const ValueKey('practice-feedback'),
-                size: 11,
-                color: result == 'correct'
-                    ? green
-                    : result.isEmpty
-                    ? muted
-                    : accent,
-                weight: result.isEmpty ? FontWeight.w400 : FontWeight.w600,
+        if (examStatus.isNotEmpty)
+          SizedBox(
+            height: 32,
+            child: Center(
+              child: TextButton.icon(
+                key: const ValueKey('terminal-new-exam'),
+                onPressed: onNewSession,
+                icon: const Icon(Icons.refresh, size: 15),
+                label: const Text('New exam'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                ),
+              ),
+            ),
+          )
+        else
+          SizedBox(
+            height: 24,
+            child: Center(
+              child: Semantics(
+                liveRegion: true,
+                child: label(
+                  examStatus == 'failed'
+                      ? 'Exam failed · three mistakes'
+                      : examStatus == 'passed'
+                      ? 'Exam passed!'
+                      : result == 'progress'
+                      ? 'Good. Send the next letter.'
+                      : result.isEmpty
+                      ? 'Pause to send your letter'
+                      : result == 'correct'
+                      ? 'Correct! Next letter…'
+                      : 'You sent $result. Try $target again.',
+                  key: const ValueKey('practice-feedback'),
+                  size: 11,
+                  color: result == 'correct'
+                      ? green
+                      : result.isEmpty
+                      ? muted
+                      : accent,
+                  weight: result.isEmpty ? FontWeight.w400 : FontWeight.w600,
+                ),
               ),
             ),
           ),
-        ),
       ],
     ),
   );
@@ -377,5 +394,8 @@ class PracticeWorkspace extends StatelessWidget {
       );
 
   bool get _locked =>
-      result == 'correct' || result == 'exam-passed' || result == 'exam-failed';
+      examStatus.isNotEmpty ||
+      result == 'correct' ||
+      result == 'exam-passed' ||
+      result == 'exam-failed';
 }
