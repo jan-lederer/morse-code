@@ -33,6 +33,9 @@ class RecognitionWorkspace extends StatefulWidget {
     this.examStatus = '',
     this.onNewSession,
     this.randomSeed,
+    this.masteryLevel,
+    this.masteryCounts = const [36, 0, 0],
+    this.onItemAnswer,
   });
 
   final Map<String, String> groups;
@@ -48,6 +51,9 @@ class RecognitionWorkspace extends StatefulWidget {
   final String examStatus;
   final VoidCallback? onNewSession;
   final int? randomSeed;
+  final int Function(String item)? masteryLevel;
+  final List<int> masteryCounts;
+  final void Function(String item, bool correct)? onItemAnswer;
   final void Function(String letter, bool correct) onAnswer;
 
   @override
@@ -96,9 +102,22 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
   void _pickQuestion({String? previous}) {
     _advanceTimer?.cancel();
     final candidates = _questionPool.where((c) => c != previous).toList();
-    _target = candidates.isEmpty
-        ? _questionPool.first
-        : candidates[_random.nextInt(candidates.length)];
+    final available = candidates.isEmpty ? _questionPool : candidates;
+    if (widget.masteryLevel == null) {
+      _target = available[_random.nextInt(available.length)];
+    } else {
+      const weights = [6, 3, 1];
+      final targetWeights = available
+          .map((item) => weights[widget.masteryLevel!(item).clamp(0, 2)])
+          .toList();
+      var pick = _random.nextInt(targetWeights.fold<int>(0, (a, b) => a + b));
+      var index = 0;
+      for (; index < available.length - 1; index++) {
+        pick -= targetWeights[index];
+        if (pick < 0) break;
+      }
+      _target = available[index];
+    }
     // Small lessons still need four distinct options. Prefer the lesson's
     // characters, then fill from the same kind of characters (letters/numbers).
     final pool =
@@ -212,6 +231,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
       }
     });
     widget.onAnswer(_target.split('').where(morse.containsKey).last, correct);
+    widget.onItemAnswer?.call(_target, correct);
     _scheduleAdvance();
   }
 
@@ -562,7 +582,12 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                       height: _fourChoices ? 176 : 64,
                       child: _answers(),
                     ),
-                    const SizedBox(height: 6),
+                    MasteryDistributionBar(
+                      counts: widget.masteryCounts,
+                      dark: widget.dark,
+                      showCounts: false,
+                      height: 8,
+                    ),
                     _stats(),
                   ],
                 ),
@@ -578,7 +603,12 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                   Expanded(flex: 2, child: _answers())
                 else
                   SizedBox(height: 64, child: _answers()),
-                const SizedBox(height: 6),
+                MasteryDistributionBar(
+                  counts: widget.masteryCounts,
+                  dark: widget.dark,
+                  showCounts: false,
+                  height: 8,
+                ),
                 _stats(),
               ],
             );

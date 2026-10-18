@@ -10,6 +10,84 @@ enum PracticeMode {
   final String label;
 }
 
+class MasteryDistributionBar extends StatelessWidget {
+  const MasteryDistributionBar({
+    super.key,
+    required this.counts,
+    required this.dark,
+    this.showCounts = true,
+    this.height = 16,
+  });
+
+  /// Counts are ordered red, yellow, green; the visual bar is green first.
+  final List<int> counts;
+  final bool dark;
+  final bool showCounts;
+  final double height;
+
+  static const colors = [
+    Color(0xFFD97968),
+    Color(0xFFD6A84F),
+    Color(0xFF648D78),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final order = [2, 1, 0];
+    return Semantics(
+      label:
+          'Current practice set proficiency: green ${counts[2]}, yellow ${counts[1]}, red ${counts[0]}',
+      child: SizedBox(
+        key: const ValueKey('mastery-distribution'),
+        width: double.infinity,
+        height: height,
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: showCounts ? 12 : height,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: dark
+                      ? const Color(0xFF353D3B)
+                      : const Color(0xFFE4E7DC),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Row(
+                  children: [
+                    for (final level in order)
+                      if (counts[level] > 0)
+                        Expanded(
+                          flex: counts[level],
+                          child: ColoredBox(
+                            color: colors[level],
+                            child: const SizedBox.expand(),
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+            ),
+            if (showCounts) ...[
+              const SizedBox(width: 8),
+              Text(
+                'G ${counts[2]}  Y ${counts[1]}  R ${counts[0]}',
+                key: const ValueKey('mastery-distribution-counts'),
+                style: TextStyle(
+                  fontSize: 9,
+                  color: dark
+                      ? const Color(0xFFB8C0BC)
+                      : const Color(0xFF747E77),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class PracticeStats extends StatelessWidget {
   const PracticeStats({
     super.key,

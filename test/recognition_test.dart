@@ -201,48 +201,45 @@ void main() {
     },
   );
 
-  testWidgets(
-    'four unique choices fill a shuffled 2x2 grid and auto-advance',
-    (tester) async {
-      await open(tester, choices: true, randomSeed: 7);
-      final target = question(tester);
-      final buttons = find.byType(OutlinedButton);
-      final labels = tester
-          .widgetList<OutlinedButton>(buttons)
-          .map((b) => (b.child as Text).data!)
-          .toList();
-      expect(labels.toSet().length, 4);
-      expect(labels, contains(target));
-      expect(labels.indexOf(target), isNot(0));
-      final grid = tester.getRect(
-        find.byKey(const ValueKey('recognition-grid')),
-      );
-      final rects = List.generate(4, (i) => tester.getRect(buttons.at(i)));
-      expect(rects[0].left, grid.left);
-      expect(rects[1].right, grid.right);
-      expect(rects[2].left, grid.left);
-      expect(rects[3].right, grid.right);
-      expect(rects[0].top, rects[1].top);
-      expect(rects[2].top, rects[3].top);
-      expect(rects[2].top, greaterThan(rects[0].bottom));
-      expect(rects.every((r) => r.height >= 72), isTrue);
-      final wrong = labels.firstWhere((c) => c != target);
-      await tap(tester, find.byKey(ValueKey('recognition-choice-$wrong')));
-      expect(
-        tester
-            .widget<OutlinedButton>(
-              find.byKey(ValueKey('recognition-choice-$wrong')),
-            )
-            .onPressed,
-        isNull,
-      );
-      await tap(tester, find.byKey(ValueKey('recognition-choice-$target')));
-      await tester.pump(const Duration(milliseconds: 650));
-      expect(question(tester), isNot(target));
-      expect(answers, [(target, false), (target, true)]);
-      await close(tester);
-    },
-  );
+  testWidgets('four unique choices fill a shuffled 2x2 grid and auto-advance', (
+    tester,
+  ) async {
+    await open(tester, choices: true, randomSeed: 7);
+    final target = question(tester);
+    final buttons = find.byType(OutlinedButton);
+    final labels = tester
+        .widgetList<OutlinedButton>(buttons)
+        .map((b) => (b.child as Text).data!)
+        .toList();
+    expect(labels.toSet().length, 4);
+    expect(labels, contains(target));
+    expect(labels.indexOf(target), isNot(0));
+    final grid = tester.getRect(find.byKey(const ValueKey('recognition-grid')));
+    final rects = List.generate(4, (i) => tester.getRect(buttons.at(i)));
+    expect(rects[0].left, grid.left);
+    expect(rects[1].right, grid.right);
+    expect(rects[2].left, grid.left);
+    expect(rects[3].right, grid.right);
+    expect(rects[0].top, rects[1].top);
+    expect(rects[2].top, rects[3].top);
+    expect(rects[2].top, greaterThan(rects[0].bottom));
+    expect(rects.every((r) => r.height >= 72), isTrue);
+    final wrong = labels.firstWhere((c) => c != target);
+    await tap(tester, find.byKey(ValueKey('recognition-choice-$wrong')));
+    expect(
+      tester
+          .widget<OutlinedButton>(
+            find.byKey(ValueKey('recognition-choice-$wrong')),
+          )
+          .onPressed,
+      isNull,
+    );
+    await tap(tester, find.byKey(ValueKey('recognition-choice-$target')));
+    await tester.pump(const Duration(milliseconds: 650));
+    expect(question(tester), isNot(target));
+    expect(answers, [(target, false), (target, true)]);
+    await close(tester);
+  });
 
   testWidgets('number group uses numeric questions and four numeric choices', (
     tester,
@@ -275,16 +272,15 @@ void main() {
           contains(' '),
         );
         expect(find.byType(OutlinedButton), findsNWidgets(4));
-        final code = tester
-            .widget<Text>(find.byKey(const ValueKey('recognition-code')));
+        final code = tester.widget<Text>(
+          find.byKey(const ValueKey('recognition-code')),
+        );
         expect(code.softWrap, isTrue);
         expect(code.style!.fontSize, 24);
         final choiceButtons = tester.widgetList<OutlinedButton>(
           find.byType(OutlinedButton),
         );
-        final codeString = code.data!
-            .replaceAll('·', '.')
-            .replaceAll('−', '-');
+        final codeString = code.data!.replaceAll('·', '.').replaceAll('−', '-');
         final answerCodes = choiceButtons.map((button) {
           return (button.child as Text).data!
               .split('')
@@ -506,6 +502,20 @@ void main() {
       await mode(tester, 'Type an answer');
       expect(find.byTooltip('Show hint'), findsOneWidget);
       expect(find.byTooltip('Back'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('mastery-distribution')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('mastery-distribution-counts')),
+        findsNothing,
+      );
+      final proficiencySegment = find.descendant(
+        of: find.byKey(const ValueKey('mastery-distribution')),
+        matching: find.byType(ColoredBox),
+      );
+      expect(proficiencySegment, findsAtLeastNWidgets(1));
+      expect(tester.getRect(proficiencySegment.first).height, greaterThan(0));
       await tap(tester, find.byTooltip('Show hint'));
       final target = question(tester);
       await tester.enterText(answer, target);

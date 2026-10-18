@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'morse.dart';
 import 'practice_controls.dart';
 import 'progress_history.dart';
+import 'practice_content.dart';
 
 class LearnOverview extends StatefulWidget {
   const LearnOverview({
@@ -33,6 +34,46 @@ class _LearnOverviewState extends State<LearnOverview> {
       widget.dark ? const Color(0xFF9AA4A0) : const Color(0xFF747E77);
   Color get line =>
       widget.dark ? const Color(0xFF353D3B) : const Color(0xFFE4E7DC);
+
+  int _level(String item, {String? kind}) {
+    final outcomes = kind == null
+        ? widget.history.records
+              .where((record) => record.letter == item)
+              .map((record) => (record.at, record.correct))
+              .toList()
+        : widget.history.masteryRecords
+              .where((record) => record.kind == kind && record.item == item)
+              .map((record) => (record.at, record.correct))
+              .toList();
+    outcomes.sort((a, b) => a.$1.compareTo(b.$1));
+    final level = masteryLevel(
+      outcomes.map((record) => record.$2),
+      singleStep: kind != null,
+    );
+    if (kind == null &&
+        outcomes.isEmpty &&
+        widget.history.earlierLetters.contains(item)) {
+      return 1;
+    }
+    return level;
+  }
+
+  Widget _masteryBar(
+    List<String> items, {
+    String? kind,
+    required String keyName,
+  }) {
+    final counts = List<int>.generate(
+      3,
+      (level) =>
+          items.where((item) => _level(item, kind: kind) == level).length,
+    );
+    return MasteryDistributionBar(
+      key: ValueKey(keyName),
+      counts: counts,
+      dark: widget.dark,
+    );
+  }
 
   Widget card(Widget child) => SizedBox(
     width: double.infinity,
@@ -86,6 +127,71 @@ class _LearnOverviewState extends State<LearnOverview> {
           style: TextStyle(fontSize: 12, color: muted),
         ),
         const SizedBox(height: 18),
+        card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your current level',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: ink,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'Mistakes move an item back. Stronger items appear less often.',
+                style: TextStyle(fontSize: 11, color: muted),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Letters & numbers · all practice modes',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: ink,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _masteryBar(
+                morse.keys.toList(),
+                keyName: 'learn-character-mastery',
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Words',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: ink,
+                ),
+              ),
+              const SizedBox(height: 7),
+              _masteryBar(
+                practiceWords,
+                kind: 'word',
+                keyName: 'learn-word-mastery',
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Sentences',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: ink,
+                ),
+              ),
+              const SizedBox(height: 7),
+              _masteryBar(
+                practiceSentences,
+                kind: 'sentence',
+                keyName: 'learn-sentence-mastery',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         card(
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

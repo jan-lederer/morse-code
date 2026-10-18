@@ -13,6 +13,7 @@ class PracticeWorkspace extends StatelessWidget {
   final String examStatus;
   final String target, path, result, group, hintCharacter;
   final int correct, attempts;
+  final List<int> masteryCounts;
   final Map<String, String> groups;
   final ValueChanged<String> onGroup;
   final ValueChanged<PracticeMode> onMode;
@@ -42,6 +43,7 @@ class PracticeWorkspace extends StatelessWidget {
     required this.group,
     required this.correct,
     required this.attempts,
+    this.masteryCounts = const [36, 0, 0],
     required this.groups,
     required this.onGroup,
     required this.onHint,
@@ -135,7 +137,12 @@ class PracticeWorkspace extends StatelessWidget {
                           ],
                         ),
                 ),
-                const SizedBox(height: 6),
+                MasteryDistributionBar(
+                  counts: masteryCounts,
+                  dark: dark,
+                  showCounts: false,
+                  height: 8,
+                ),
                 SizedBox(
                   key: const ValueKey('practice-stats'),
                   height: 34,

@@ -41,7 +41,7 @@ flutter build web --release --no-web-resources-cdn
 ```
 
 The Android application ID is `studio.dit.dit_morse`. Its version and build
-number come from `pubspec.yaml` (currently `1.2.0+21`). Release builds use the
+number come from `pubspec.yaml` (currently `1.6.0+32`). Release builds use the
 generated Android debug signing key; keep that key to install updates. Store
 releases should use a private release key. Updates need the same application
 ID and signing key, plus a higher build number.

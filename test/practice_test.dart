@@ -60,6 +60,7 @@ void main() {
       find.byKey(const ValueKey('touch-morse-key')),
       find.byKey(const ValueKey('practice-group')),
       find.byKey(const ValueKey('practice-correct')),
+      find.byKey(const ValueKey('mastery-distribution')),
       find.text('Dot'),
       find.text('Dash'),
       find.byTooltip('Skip letter'),
@@ -79,6 +80,18 @@ void main() {
       expect(bounds.width, greaterThan(0));
       expect(bounds.height, greaterThan(0));
     }
+    expect(find.byKey(const ValueKey('mastery-distribution')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('mastery-distribution-counts')),
+      findsNothing,
+    );
+    final coloredSegments = find.descendant(
+      of: find.byKey(const ValueKey('mastery-distribution')),
+      matching: find.byType(ColoredBox),
+    );
+    expect(coloredSegments, findsAtLeastNWidgets(1));
+    expect(tester.getRect(coloredSegments.first).height, greaterThan(0));
+    expect(tester.getRect(coloredSegments.first).width, greaterThan(0));
     expect(
       find.ancestor(
         of: find.byKey(const ValueKey('practice-workspace')),

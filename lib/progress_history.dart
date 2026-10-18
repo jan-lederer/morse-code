@@ -68,6 +68,78 @@ class PracticeRecord {
   }
 }
 
+class MasteryRecord {
+  const MasteryRecord({
+    required this.id,
+    required this.at,
+    required this.mode,
+    required this.item,
+    required this.kind,
+    required this.correct,
+  });
+  final String id, item, kind;
+  final DateTime at;
+  final PracticeMode mode;
+  final bool correct;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'at': at.toUtc().millisecondsSinceEpoch,
+    'mode': mode.name,
+    'item': item,
+    'kind': kind,
+    'correct': correct,
+  };
+
+  static MasteryRecord? parse(dynamic value) {
+    if (value is! Map) return null;
+    final mode = PracticeMode.values
+        .where((m) => m.name == value['mode'])
+        .firstOrNull;
+    if (mode == null ||
+        value['id'] is! String ||
+        value['at'] is! int ||
+        value['item'] is! String ||
+        value['kind'] is! String ||
+        !['word', 'sentence'].contains(value['kind']) ||
+        value['correct'] is! bool) {
+      return null;
+    }
+    return MasteryRecord(
+      id: value['id'],
+      at: DateTime.fromMillisecondsSinceEpoch(value['at'], isUtc: true),
+      mode: mode,
+      item: value['item'],
+      kind: value['kind'],
+      correct: value['correct'],
+    );
+  }
+}
+
+/// Three-step mastery. Single-character items need a short streak to advance;
+/// phrase items can opt into one level per correct answer or mistake.
+int masteryLevel(Iterable<bool> outcomes, {bool singleStep = false}) {
+  var level = 0;
+  var streak = 0;
+  for (final correct in outcomes) {
+    if (singleStep) {
+      level = (level + (correct ? 1 : -1)).clamp(0, 2);
+      continue;
+    }
+    if (!correct) {
+      level = (level - 1).clamp(0, 2);
+      streak = 0;
+      continue;
+    }
+    streak++;
+    if ((level == 0 && streak >= 2) || (level == 1 && streak >= 3)) {
+      level++;
+      streak = 0;
+    }
+  }
+  return level;
+}
+
 class ProgressSummary {
   ProgressSummary(
     this.records, {
@@ -107,11 +179,14 @@ class ProgressHistory {
     this.earlierCorrect = 0,
     Set<String>? earlierLetters,
     List<PracticeRecord>? records,
+    List<MasteryRecord>? masteryRecords,
   }) : earlierLetters = earlierLetters ?? {},
-       records = records ?? [];
+       records = records ?? [],
+       masteryRecords = masteryRecords ?? [];
   final int earlierAttempts, earlierCorrect;
   final Set<String> earlierLetters;
   final List<PracticeRecord> records;
+  final List<MasteryRecord> masteryRecords;
   bool get hasEarlierResults =>
       earlierAttempts > 0 || earlierLetters.isNotEmpty;
   int get totalAttempts => earlierAttempts + records.length;
@@ -124,7 +199,7 @@ class ProgressHistory {
 
   factory ProgressHistory.fromSaved(Map<String, dynamic> data) {
     final raw = data['progress'];
-    final current = raw is Map && raw['version'] == 1;
+    final current = raw is Map && raw['version'] is int && raw['version'] >= 1;
     final source = current ? raw : data;
     final attempts = source['attempts'] is int
         ? (source['attempts'] as int).clamp(0, 1 << 53)
@@ -144,20 +219,32 @@ class ProgressHistory {
         if (record != null && seen.add(record.id)) records.add(record);
       }
     }
+    final seenMastery = <String>{};
+    final masteryRecords = <MasteryRecord>[];
+    if (current && raw['mastery'] is List) {
+      for (final item in raw['mastery']) {
+        final record = MasteryRecord.parse(item);
+        if (record != null && seenMastery.add(record.id)) {
+          masteryRecords.add(record);
+        }
+      }
+    }
     return ProgressHistory(
       earlierAttempts: attempts,
       earlierCorrect: correct,
       earlierLetters: letters,
       records: records,
+      masteryRecords: masteryRecords,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'version': 1,
+    'version': 2,
     'attempts': earlierAttempts,
     'correct': earlierCorrect,
     'learned': earlierLetters.toList(),
     'records': records.map((r) => r.toJson()).toList(),
+    'mastery': masteryRecords.map((r) => r.toJson()).toList(),
   };
 
   void merge(Iterable<PracticeRecord> pending) {

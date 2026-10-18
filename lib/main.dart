@@ -445,7 +445,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           result = 'progress';
         } else {
           final isCorrect = letter == expected;
-          _recordPracticeAnswer(expected, isCorrect);
+          _recordPracticeAnswer(
+            expected,
+            isCorrect,
+            itemTarget: target,
+            itemComplete: sendIndex == target.length - 1,
+          );
           if (!examSelected && isCorrect) {
             sendIndex = 0;
             result = 'correct';
@@ -543,9 +548,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     final candidates = _practiceTargets().where((c) => c != target).toList();
     setState(() {
       _sendChoiceKey = null;
-      target = candidates.isEmpty
-          ? _practiceTargets().first
-          : candidates[math.Random().nextInt(candidates.length)];
+      target = _weightedTarget(
+        candidates.isEmpty ? _practiceTargets() : candidates,
+      );
       sendIndex = 0;
       result = '';
       lastCode = '';
@@ -559,6 +564,48 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       : group == '@exam' || group == '@symbols'
       ? morse.keys.toList()
       : group.split('');
+
+  int _masteryLevel(String item) {
+    if (group == '@words' || group == '@sentences') {
+      final kind = group == '@words' ? 'word' : 'sentence';
+      final outcomes =
+          history.masteryRecords
+              .where((record) => record.kind == kind && record.item == item)
+              .toList()
+            ..sort((a, b) => a.at.compareTo(b.at));
+      return masteryLevel(
+        outcomes.map((record) => record.correct),
+        singleStep: true,
+      );
+    }
+    final outcomes =
+        history.records.where((record) => record.letter == item).toList()
+          ..sort((a, b) => a.at.compareTo(b.at));
+    final level = masteryLevel(outcomes.map((record) => record.correct));
+    return outcomes.isEmpty && history.earlierLetters.contains(item)
+        ? 1
+        : level;
+  }
+
+  List<int> get _masteryDistribution {
+    final counts = [0, 0, 0];
+    for (final item in _practiceTargets()) {
+      counts[_masteryLevel(item)]++;
+    }
+    return counts;
+  }
+
+  String _weightedTarget(List<String> candidates) {
+    if (candidates.length == 1) return candidates.first;
+    final weights = candidates.map((item) => [6, 3, 1][_masteryLevel(item)]);
+    final total = weights.fold<int>(0, (sum, weight) => sum + weight);
+    var pick = math.Random().nextInt(total);
+    for (var index = 0; index < candidates.length; index++) {
+      pick -= [6, 3, 1][_masteryLevel(candidates[index])];
+      if (pick < 0) return candidates[index];
+    }
+    return candidates.last;
+  }
 
   Text txt(
     String text, {
@@ -1746,6 +1793,21 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     );
   }
 
+  void recordItemMastery(String item, bool isCorrect) {
+    if (group != '@words' && group != '@sentences') return;
+    final kind = group == '@words' ? 'word' : 'sentence';
+    history.masteryRecords.add(
+      MasteryRecord(
+        id: '$sessionId:item:${history.masteryRecords.length + 1}',
+        at: DateTime.now().toUtc(),
+        mode: practiceMode,
+        item: item,
+        kind: kind,
+        correct: isCorrect,
+      ),
+    );
+  }
+
   void restartPractice() {
     if (examSelected) {
       startExam();
@@ -1767,9 +1829,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     final candidates = _practiceTargets()
         .where((candidate) => candidate != previous)
         .toList();
-    return candidates.isEmpty
-        ? _practiceTargets().first
-        : candidates[math.Random().nextInt(candidates.length)];
+    return _weightedTarget(
+      candidates.isEmpty ? _practiceTargets() : candidates,
+    );
   }
 
   void startExam() {
@@ -1883,8 +1945,17 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     save();
   }
 
-  void _recordPracticeAnswer(String letter, bool isCorrect) {
+  void _recordPracticeAnswer(
+    String letter,
+    bool isCorrect, {
+    String? itemTarget,
+    bool itemComplete = true,
+  }) {
     recordPractice(practiceMode, letter, isCorrect);
+    final phrase = itemTarget;
+    if (phrase != null && (!isCorrect || itemComplete)) {
+      recordItemMastery(phrase, isCorrect);
+    }
     if (!examSelected || examStatus.isNotEmpty) return;
     result = isCorrect ? 'correct' : letter;
     if (isCorrect) {
@@ -2005,6 +2076,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           group: group,
           correct: sessionCorrect,
           attempts: sessionAttempts,
+          masteryCounts: _masteryDistribution,
           groups: practiceGroups,
           onGroup: changePracticeGroup,
           onHint: () {
@@ -2029,7 +2101,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                 sendIndex++;
                 result = 'progress';
               } else {
-                _recordPracticeAnswer(expected, isCorrect);
+                _recordPracticeAnswer(
+                  expected,
+                  isCorrect,
+                  itemTarget: target,
+                  itemComplete: sendIndex == target.length - 1,
+                );
                 if (!examSelected) {
                   if (isCorrect) sendIndex = 0;
                   result = isCorrect ? 'correct' : symbols(code);
@@ -2045,6 +2122,13 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       : RecognitionWorkspace(
           groups: practiceGroups,
           initialGroup: group,
+          masteryLevel: _masteryLevel,
+          masteryCounts: _masteryDistribution,
+          onItemAnswer: (item, isCorrect) {
+            if (!mounted) return;
+            setState(() => recordItemMastery(item, isCorrect));
+            save();
+          },
           fourChoices: practiceMode == PracticeMode.choices,
           sound: sound,
           vibration: vibration,
@@ -2079,11 +2163,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     final targetCode = morse[target[sendIndex]]!;
     final key = '$target:$sendIndex';
     if (_sendChoiceKey != key) {
-      final pool = morse.values
-          .where((code) => code != targetCode)
-          .toSet()
-          .toList()
-        ..shuffle(_sendChoiceRandom);
+      final pool =
+          morse.values.where((code) => code != targetCode).toSet().toList()
+            ..shuffle(_sendChoiceRandom);
       _sendChoices = [targetCode, ...pool.take(3)]..shuffle(_sendChoiceRandom);
       _sendChoiceKey = key;
     }
