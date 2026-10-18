@@ -32,6 +32,7 @@ class RecognitionWorkspace extends StatefulWidget {
     this.examLives = 3,
     this.examStatus = '',
     this.onNewSession,
+    this.randomSeed,
   });
 
   final Map<String, String> groups;
@@ -46,6 +47,7 @@ class RecognitionWorkspace extends StatefulWidget {
   final int examQuestion, examLives;
   final String examStatus;
   final VoidCallback? onNewSession;
+  final int? randomSeed;
   final void Function(String letter, bool correct) onAnswer;
 
   @override
@@ -54,7 +56,7 @@ class RecognitionWorkspace extends StatefulWidget {
 
 class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
     with WidgetsBindingObserver {
-  final _random = Random();
+  late final Random _random;
   final _answer = TextEditingController();
   final _answerFocus = FocusNode();
   final _answersKey = GlobalKey();
@@ -81,6 +83,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
   @override
   void initState() {
     super.initState();
+    _random = Random(widget.randomSeed);
     WidgetsBinding.instance.addObserver(this);
     _group = widget.initialGroup;
     _sound = widget.sound;
@@ -315,17 +318,22 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                     textAlign: TextAlign.center,
                     style: TextStyle(color: _muted, fontSize: 12),
                   )
-                : FittedBox(
-                    child: Text(
-                      symbols(
-                        _target
-                            .split('')
-                            .where(morse.containsKey)
-                            .map((c) => morse[c]!)
-                            .join(' '),
-                      ),
-                      key: const ValueKey('recognition-code'),
-                      style: TextStyle(fontSize: 56, color: _accent),
+                : Text(
+                    symbols(
+                      _target
+                          .split('')
+                          .where(morse.containsKey)
+                          .map((c) => morse[c]!)
+                          .join(' '),
+                    ),
+                    key: const ValueKey('recognition-code'),
+                    textAlign: TextAlign.center,
+                    softWrap: true,
+                    maxLines: 8,
+                    overflow: TextOverflow.visible,
+                    style: TextStyle(
+                      fontSize: _phrases ? 24 : 56,
+                      color: _accent,
                     ),
                   ),
           ),
@@ -433,7 +441,11 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                           ),
                           child: Text(
                             _choices[row * 2 + col],
-                            style: const TextStyle(fontSize: 32),
+                            textAlign: TextAlign.center,
+                            softWrap: true,
+                            maxLines: _phrases ? 4 : 1,
+                            overflow: TextOverflow.visible,
+                            style: TextStyle(fontSize: _phrases ? 18 : 32),
                           ),
                         ),
                       ),

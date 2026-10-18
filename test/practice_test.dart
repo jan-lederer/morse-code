@@ -33,12 +33,13 @@ void main() {
   Future<void> openPractice(
     WidgetTester tester, {
     Size size = const Size(390, 844),
+    int? randomSeed,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const DitApp());
+    await tester.pumpWidget(DitApp(randomSeed: randomSeed));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Practice').last);
     await tester.pumpAndSettle();
@@ -234,6 +235,40 @@ void main() {
     expect(find.byKey(const ValueKey('touch-morse-key')), findsNothing);
     expect(find.byType(OutlinedButton), findsNWidgets(4));
     expect(tester.takeException(), isNull);
+  });
+  testWidgets('sending four choices shuffle the correct signal position', (
+    tester,
+  ) async {
+    final positions = <int>{};
+    var capturedRandomizedPreview = false;
+    for (var seed = 0; seed < 12; seed++) {
+      await openPractice(tester, randomSeed: seed);
+      await tester.tap(find.byKey(const ValueKey('practice-direction-send')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('4').last);
+      await tester.pumpAndSettle();
+
+      final correctCode = morse[target(tester)]!;
+      final choices = find.byWidgetPredicate(
+        (widget) =>
+            widget is OutlinedButton &&
+            widget.key is ValueKey<String> &&
+            (widget.key as ValueKey<String>).value.startsWith('send-choice-'),
+      );
+      final labels = tester
+          .widgetList<OutlinedButton>(choices)
+          .map((button) => (button.key as ValueKey<String>).value.substring(12))
+          .toList();
+      expect(labels, contains(correctCode));
+      final position = labels.indexOf(correctCode);
+      positions.add(position);
+      if (capture && !capturedRandomizedPreview && position != 0) {
+        await preview(tester, 'send-four-choices-randomized');
+        capturedRandomizedPreview = true;
+      }
+      await tester.pumpWidget(const SizedBox.shrink());
+    }
+    expect(positions.length, greaterThan(1));
   });
   testWidgets('sending choices stay above practice stats on phone layouts', (
     tester,

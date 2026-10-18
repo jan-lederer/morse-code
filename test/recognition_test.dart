@@ -67,6 +67,7 @@ void main() {
     bool hideHint = false,
     Size size = const Size(390, 844),
     bool dark = false,
+    int? randomSeed,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -93,6 +94,7 @@ void main() {
             },
             initialGroup: group,
             fourChoices: choices,
+            randomSeed: randomSeed,
             sound: sound,
             vibration: vibration,
             hideHint: hideHint,
@@ -200,9 +202,9 @@ void main() {
   );
 
   testWidgets(
-    'four unique choices fill the width in a large 2x2 grid and auto-advance',
+    'four unique choices fill a shuffled 2x2 grid and auto-advance',
     (tester) async {
-      await open(tester, choices: true);
+      await open(tester, choices: true, randomSeed: 7);
       final target = question(tester);
       final buttons = find.byType(OutlinedButton);
       final labels = tester
@@ -211,6 +213,7 @@ void main() {
           .toList();
       expect(labels.toSet().length, 4);
       expect(labels, contains(target));
+      expect(labels.indexOf(target), isNot(0));
       final grid = tester.getRect(
         find.byKey(const ValueKey('recognition-grid')),
       );
@@ -272,6 +275,41 @@ void main() {
           contains(' '),
         );
         expect(find.byType(OutlinedButton), findsNWidgets(4));
+        final code = tester
+            .widget<Text>(find.byKey(const ValueKey('recognition-code')));
+        expect(code.softWrap, isTrue);
+        expect(code.style!.fontSize, 24);
+        final choiceButtons = tester.widgetList<OutlinedButton>(
+          find.byType(OutlinedButton),
+        );
+        final codeString = code.data!
+            .replaceAll('·', '.')
+            .replaceAll('−', '-');
+        final answerCodes = choiceButtons.map((button) {
+          return (button.child as Text).data!
+              .split('')
+              .where(morse.containsKey)
+              .map((letter) => morse[letter]!)
+              .join(' ');
+        });
+        expect(answerCodes, contains(codeString));
+        for (final button in choiceButtons) {
+          final label = button.child as Text;
+          expect(label.maxLines, 4);
+          expect(label.overflow, TextOverflow.visible);
+          expect(label.style!.fontSize, 18);
+        }
+        if (capture && group == '@sentences') {
+          final boundary = tester.firstRenderObject<RenderRepaintBoundary>(
+            find.byType(RepaintBoundary),
+          );
+          await tester.runAsync(() async {
+            final image = await boundary.toImage(pixelRatio: 2);
+            final png = await image.toByteData(format: ui.ImageByteFormat.png);
+            await File('artifacts/listening-sentence-four-choices.png')
+                .writeAsBytes(png!.buffer.asUint8List());
+          });
+        }
         expect(tester.takeException(), isNull);
         await close(tester);
       }

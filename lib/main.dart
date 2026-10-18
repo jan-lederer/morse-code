@@ -96,7 +96,8 @@ void main() {
 }
 
 class DitApp extends StatefulWidget {
-  const DitApp({super.key});
+  const DitApp({super.key, this.randomSeed});
+  final int? randomSeed;
   @override
   State<DitApp> createState() => _DitAppState();
 }
@@ -135,6 +136,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   String appVersion = '';
   Timer? commitTimer, holdTimer, advanceTimer;
   final signalFeedback = SignalFeedback(DeviceService.tone);
+  late final math.Random _sendChoiceRandom;
+  String? _sendChoiceKey;
+  List<String> _sendChoices = [];
   SignalTone? inputTone;
   bool practiceSuspended = false, dialogOpen = false;
   bool holdDash = false;
@@ -159,6 +163,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _sendChoiceRandom = math.Random(widget.randomSeed);
     WidgetsBinding.instance.addObserver(this);
     _load();
     DeviceService.version().then((version) {
@@ -522,6 +527,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     if (examSelected) {
       if (!examRunning || examQuestion >= 20 || examModes.isEmpty) return;
       setState(() {
+        _sendChoiceKey = null;
         examQuestion++;
         practiceMode = examModes.removeLast();
         target = _pickPracticeTarget(previous: target);
@@ -538,6 +544,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     }
     final candidates = _practiceTargets().where((c) => c != target).toList();
     setState(() {
+      _sendChoiceKey = null;
       target = candidates.isEmpty
           ? _practiceTargets().first
           : candidates[math.Random().nextInt(candidates.length)];
@@ -1717,6 +1724,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     sessionAttempts = 0;
     sessionCorrect = 0;
     sessionId = '${DateTime.now().microsecondsSinceEpoch}:${++sessionSerial}';
+    _sendChoiceKey = null;
   }
 
   void recordPractice(PracticeMode mode, String letter, bool isCorrect) {
@@ -2071,11 +2079,17 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
 
   List<String> _sendChoiceCodes() {
     final targetCode = morse[target[sendIndex]]!;
-    final pool = morse.values
-        .where((code) => code != targetCode)
-        .toSet()
-        .toList();
-    return [targetCode, ...pool.take(3)];
+    final key = '$target:$sendIndex';
+    if (_sendChoiceKey != key) {
+      final pool = morse.values
+          .where((code) => code != targetCode)
+          .toSet()
+          .toList()
+        ..shuffle(_sendChoiceRandom);
+      _sendChoices = [targetCode, ...pool.take(3)]..shuffle(_sendChoiceRandom);
+      _sendChoiceKey = key;
+    }
+    return _sendChoices;
   }
 
   Widget alphabetPage() => Column(

@@ -1,7 +1,7 @@
 name: dit_morse
 description: Learn Morse code, one small signal at a time.
 publish_to: none
-version: 1.2.0+21
+version: 1.3.2+24
 environment:
   sdk: ^3.13.5
 dependencies:
