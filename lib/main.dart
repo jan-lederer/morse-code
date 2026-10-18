@@ -290,13 +290,11 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     final id = ++playbackId;
     setState(() {
       playing = true;
-      sound = true;
     });
-    save();
     final lead = await DeviceService.playPattern(
       code,
-      sound: true,
-      vibration: false,
+      sound: sound,
+      vibration: vibration,
     );
     if (!mounted || id != playbackId) return;
     if (lead < 0) {
@@ -2142,10 +2140,10 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                       color: selectedLetter == entry.key ? soft : surface,
                       borderRadius: BorderRadius.circular(13),
                       child: InkWell(
+                        key: ValueKey('alphabet-entry-${entry.key}'),
                         borderRadius: BorderRadius.circular(13),
                         onTap: () {
                           setState(() => selectedLetter = entry.key);
-                          buzz(25);
                           listen(entry.value);
                         },
                         child: Container(

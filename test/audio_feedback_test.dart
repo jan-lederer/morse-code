@@ -9,13 +9,17 @@ void main() {
   const channel = MethodChannel('studio.dit/device');
   final tones = <bool>[];
   var sound = true;
+  var vibration = false;
 
   setUp(() {
     tones.clear();
     sound = true;
+    vibration = false;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-          if (call.method == 'load') return jsonEncode({'sound': sound});
+          if (call.method == 'load') {
+            return jsonEncode({'sound': sound, 'vibration': vibration});
+          }
           if (call.method == 'tone') tones.add(call.arguments as bool);
           return null;
         });
@@ -227,6 +231,69 @@ void main() {
     await tap.up();
     await tester.pump(const Duration(milliseconds: 150));
     expect(tones, isNot(contains(true)));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('alphabet previews respect the saved sound setting', (
+    tester,
+  ) async {
+    sound = false;
+    final patterns = <Map<Object?, Object?>>[];
+    String? saved;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'load') return jsonEncode({'sound': sound});
+          if (call.method == 'save') saved = call.arguments as String;
+          if (call.method == 'playPattern') {
+            patterns.add(Map<Object?, Object?>.from(call.arguments as Map));
+            return 0;
+          }
+          return null;
+        });
+    await open(tester);
+    await tester.tap(find.text('Alphabet').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('alphabet-entry-A')));
+    await tester.pump();
+
+    expect(patterns, hasLength(1));
+    expect(patterns.single['sound'], isFalse);
+    expect(
+      saved == null || (jsonDecode(saved!) as Map)['sound'] == false,
+      isTrue,
+    );
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('alphabet previews use the saved vibration setting', (
+    tester,
+  ) async {
+    vibration = true;
+    final patterns = <Map<Object?, Object?>>[];
+    final vibrations = <int>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'load') {
+            return jsonEncode({'sound': false, 'vibration': true});
+          }
+          if (call.method == 'vibrate') vibrations.add(call.arguments as int);
+          if (call.method == 'playPattern') {
+            patterns.add(Map<Object?, Object?>.from(call.arguments as Map));
+            return 0;
+          }
+          return null;
+        });
+    await open(tester);
+    await tester.tap(find.text('Alphabet').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('alphabet-entry-A')));
+    await tester.pump();
+
+    expect(vibrations, isEmpty);
+    expect(patterns.single['vibration'], isTrue);
+    expect(patterns.single['sound'], isFalse);
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

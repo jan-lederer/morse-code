@@ -147,7 +147,7 @@ void main() {
       final target = question(tester);
       await tap(tester, find.text('Check'));
       expect(answers, isEmpty);
-      await tester.enterText(answer, 'z');
+      await tester.enterText(answer, target == 'Z' ? 'y' : 'z');
       await tap(tester, find.text('Check'));
       expect(answers, [(target, false)]);
       expect(question(tester), target);
