@@ -1,6 +1,7 @@
 package studio.dit.dit_morse
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -10,6 +11,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.net.Uri
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -37,6 +39,10 @@ class MainActivity : FlutterActivity() {
                         "load" -> result.success(getSharedPreferences("dit", Context.MODE_PRIVATE).getString("state", null))
                         "save" -> {
                             getSharedPreferences("dit", Context.MODE_PRIVATE).edit().putString("state", call.arguments as String).apply()
+                            result.success(null)
+                        }
+                        "openPrivacyPolicy" -> {
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://jan-lederer.github.io/morse-code/")))
                             result.success(null)
                         }
                         "tone" -> { setTone(call.arguments == true); result.success(null) }

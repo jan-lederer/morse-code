@@ -24,6 +24,12 @@ class DeviceService {
     } catch (_) {}
   }
 
+  static Future<void> openPrivacyPolicy() async {
+    try {
+      await _channel.invokeMethod<void>('openPrivacyPolicy');
+    } catch (_) {}
+  }
+
   static void tone(bool enabled) {
     _channel.invokeMethod<void>('tone', enabled).catchError((_) {});
   }

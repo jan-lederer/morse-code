@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'morse.dart';
+import 'app_strings.dart';
 
 const _accent = Color(0xFFE77860);
 
@@ -68,7 +69,7 @@ class MorseTree extends StatelessWidget {
               left: 4,
               top: 0,
               child: Text(
-                '· DOT / LEFT',
+                tr('· DOT / LEFT'),
                 style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w600,
@@ -82,7 +83,7 @@ class MorseTree extends StatelessWidget {
               right: 4,
               top: 0,
               child: Text(
-                '− DASH / RIGHT',
+                tr('− DASH / RIGHT'),
                 style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w600,
@@ -102,13 +103,13 @@ class MorseTree extends StatelessWidget {
                 top: center.dy - size / 2,
                 child: Semantics(
                   label: node.code.isEmpty
-                      ? 'Morse tree root'
-                      : '${node.letter}, ${node.code.split('').map((c) => c == '.' ? 'dot' : 'dash').join(' ')}',
+                      ? tr('Morse tree root')
+                      : '${node.letter}, ${node.code.split('').map((c) => tr(c == '.' ? 'dot' : 'dash')).join(' ')}',
                   button: node.letter.isNotEmpty,
                   selected: current,
                   child: Tooltip(
                     message: node.letter.isEmpty
-                        ? 'Start here'
+                        ? tr('Start here')
                         : '${node.letter}  ${symbols(node.code)}',
                     child: InkWell(
                       onTap: node.letter.isEmpty ? null : () => onSelect(node),
@@ -141,7 +142,7 @@ class MorseTree extends StatelessWidget {
                         alignment: Alignment.center,
                         child: Text(
                           node.code.isEmpty
-                              ? 'dit'
+                              ? tr('dit')
                               : node.letter.isEmpty
                               ? '·'
                               : node.letter,

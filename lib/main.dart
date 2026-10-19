@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 
 import 'morse.dart';
@@ -16,6 +17,7 @@ import 'practice_controls.dart';
 import 'practice_content.dart';
 import 'progress_history.dart';
 import 'learn_overview.dart';
+import 'app_strings.dart';
 
 const coral = Color(0xFFE77860);
 const green = Color(0xFF648D78);
@@ -110,6 +112,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       pressed = false,
       playing = false;
   int page = 1, pace = 1, attempts = 0, correct = 0;
+  String appLanguage = 'EN';
   final learned = <String>{};
   ProgressHistory history = ProgressHistory();
   int examsPassed = 0;
@@ -240,6 +243,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    AppStrings.language = 'EN';
     _sendChoiceRandom = math.Random(widget.randomSeed);
     WidgetsBinding.instance.addObserver(this);
     _load();
@@ -259,6 +263,10 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         vibration = data['vibration'] == true;
         hideHint = data['hideHint'] == true;
         pace = (data['pace'] is int ? data['pace'] as int : 1).clamp(0, 2);
+        appLanguage = AppStrings.languages.contains(data['language'])
+            ? data['language'] as String
+            : 'EN';
+        AppStrings.language = appLanguage;
         final loaded = ProgressHistory.fromSaved(data);
         loaded.merge(history.records);
         history = loaded;
@@ -296,6 +304,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     DeviceService.save(
       jsonEncode({
         'dark': dark,
+        'language': appLanguage,
         'sound': sound,
         'vibration': vibration,
         'hideHint': hideHint,
@@ -340,7 +349,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     messenger.currentState?.hideCurrentSnackBar();
     messenger.currentState?.showSnackBar(
       SnackBar(
-        content: Text(text),
+        content: Text(tr(text)),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),
@@ -695,7 +704,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     TextAlign? align,
     TextDecoration? decoration,
   }) => Text(
-    text,
+    tr(text),
     textAlign: align,
     style: TextStyle(
       fontSize: size,
@@ -747,16 +756,17 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     IconData? icon,
     bool primary = false,
     bool compact = false,
+    double compactPadding = 2,
   }) => FilledButton.icon(
     onPressed: onTap,
     icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 17),
-    label: Text(text),
+    label: Text(tr(text)),
     style: FilledButton.styleFrom(
       backgroundColor: primary ? coral : (dark ? line : bg),
       foregroundColor: primary ? Colors.white : ink,
       elevation: 0,
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 12 : 19,
+        horizontal: compact ? compactPadding : 19,
         vertical: 17,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
@@ -833,6 +843,14 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'morse',
       debugShowCheckedModeBanner: false,
+      locale: Locale(appLanguage.toLowerCase()),
+      supportedLocales: const [
+        Locale('en'),
+        Locale('de'),
+        Locale('fr'),
+        Locale('es'),
+      ],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: theme,
       scaffoldMessengerKey: messenger,
       home: LayoutBuilder(
@@ -1145,7 +1163,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           const SizedBox(width: 20),
         ],
         IconButton(
-          tooltip: dark ? 'Switch to light mode' : 'Switch to dark mode',
+          tooltip: tr(dark ? 'Switch to light mode' : 'Switch to dark mode'),
           onPressed: () {
             setState(() => dark = !dark);
             save();
@@ -1156,7 +1174,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         ),
         if (!wide)
           IconButton(
-            tooltip: 'Settings',
+            tooltip: tr('Settings'),
             onPressed: settingsDialog,
             icon: smallIcon(Icons.tune),
           ),
@@ -1214,7 +1232,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               Expanded(
                 child: Text.rich(
                   TextSpan(
-                    text: title,
+                    text: tr(title),
                     style: TextStyle(
                       fontSize: c.maxWidth < 600 ? 32 : 40,
                       height: 1.17,
@@ -1372,7 +1390,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                 ),
               ),
               Tooltip(
-                message: 'Show numbers',
+                message: tr('Show numbers'),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1504,7 +1522,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 15),
           Semantics(
-            label: 'Morse key. Tap for dot. Hold for dash.',
+            label: tr('Morse key. Tap for dot. Hold for dash.'),
             button: true,
             child: Listener(
               onPointerDown: pointerDown,
@@ -1592,7 +1610,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               ),
               const SizedBox(width: 7),
               IconButton.filledTonal(
-                tooltip: 'Finish letter',
+                tooltip: tr('Finish letter'),
                 onPressed: commit,
                 style: IconButton.styleFrom(
                   backgroundColor: dark ? line : bg,
@@ -1681,7 +1699,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               child: txt('${message.length} characters', size: 9, color: muted),
             ),
             IconButton(
-              tooltip: 'Delete last signal or character',
+              tooltip: tr('Delete last signal or character'),
               onPressed: () {
                 commitTimer?.cancel();
                 setState(() {
@@ -1699,7 +1717,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               icon: smallIcon(Icons.backspace_outlined, size: 16),
             ),
             IconButton(
-              tooltip: 'Clear message',
+              tooltip: tr('Clear message'),
               onPressed: () {
                 cancelInput();
                 setState(() {
@@ -1966,7 +1984,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     final choice = await showDialog<_ExamChoice>(
       context: dialogContext,
       builder: (context) => AlertDialog(
-        title: const Text('Exam'),
+        title: Text(tr('Exam')),
         content: Text(
           saved == null
               ? 'No unfinished exam to resume.'
@@ -1978,16 +1996,16 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
             onPressed: saved == null
                 ? null
                 : () => Navigator.pop(context, _ExamChoice.resume),
-            child: const Text('Resume last exam'),
+            child: Text(tr('Resume last exam')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(tr('Cancel')),
           ),
           FilledButton(
             key: const ValueKey('start-new-exam'),
             onPressed: () => Navigator.pop(context, _ExamChoice.startNew),
-            child: const Text('Start new exam'),
+            child: Text(tr('Start new exam')),
           ),
         ],
       ),
@@ -2071,8 +2089,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               context: dialogContext,
               builder: (context) => AlertDialog(
                 key: const ValueKey('exam-passed-dialog'),
-                title: const Text('Exam passed!'),
-                content: const Text('You completed all 20 questions.'),
+                title: Text(tr('Exam passed!')),
+                content: Text(tr('You completed all 20 questions.')),
                 actions: [
                   FilledButton(
                     key: const ValueKey('exam-passed-new-exam'),
@@ -2080,7 +2098,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                       Navigator.pop(context);
                       restartPractice();
                     },
-                    child: const Text('Start new exam'),
+                    child: Text(tr('Start new exam')),
                   ),
                 ],
               ),
@@ -2281,7 +2299,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         onChanged: (value) =>
             setState(() => search = value.trim().toUpperCase()),
         decoration: InputDecoration(
-          hintText: 'Find a letter or number…',
+          hintText: tr('Find a letter or number…'),
           hintStyle: TextStyle(color: muted, fontSize: 12),
           prefixIcon: Icon(Icons.search, size: 20, color: muted),
           filled: true,
@@ -2466,6 +2484,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   void settingsDialog() {
     cancelInput();
     stopPlayback();
+    VoidCallback? refreshRoute;
     dialog(
       'SETTINGS',
       'Your rhythm, your rules.',
@@ -2477,13 +2496,15 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               children: [
                 Expanded(
                   child: Text(
-                    appVersion.isEmpty ? 'Version …' : 'Version $appVersion',
+                    tr(
+                      appVersion.isEmpty ? 'Version …' : 'Version $appVersion',
+                    ),
                     key: const ValueKey('app-version'),
                     style: TextStyle(fontSize: 11, color: muted),
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Open-source licenses',
+                  tooltip: tr('Open-source licenses'),
                   onPressed: () => showLicensePage(
                     context: context,
                     applicationName: 'morse',
@@ -2496,6 +2517,46 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                     width: 32,
                     height: 32,
                   ),
+                ),
+                IconButton(
+                  key: const ValueKey('privacy-policy-link'),
+                  tooltip: tr('Privacy policy'),
+                  onPressed: DeviceService.openPrivacyPolicy,
+                  icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 32,
+                    height: 32,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: txt('Language', size: 13, color: muted)),
+                DropdownButton<String>(
+                  key: const ValueKey('language-selector'),
+                  value: appLanguage,
+                  underline: const SizedBox.shrink(),
+                  isDense: true,
+                  items: AppStrings.languages
+                      .map(
+                        (code) =>
+                            DropdownMenuItem(value: code, child: Text(code)),
+                      )
+                      .toList(),
+                  onChanged: (code) {
+                    if (code == null) return;
+                    setState(() {
+                      appLanguage = code;
+                      AppStrings.language = code;
+                    });
+                    update(() {});
+                    refreshRoute?.call();
+                    save();
+                  },
                 ),
               ],
             ),
@@ -2528,10 +2589,10 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
             txt('INPUT PACE', size: 9, color: muted, spacing: 1.5),
             const SizedBox(height: 12),
             SegmentedButton<int>(
-              segments: const [
-                ButtonSegment(value: 0, label: Text('Relaxed')),
-                ButtonSegment(value: 1, label: Text('Natural')),
-                ButtonSegment(value: 2, label: Text('Quick')),
+              segments: [
+                ButtonSegment(value: 0, label: Text(tr('Relaxed'))),
+                ButtonSegment(value: 1, label: Text(tr('Natural'))),
+                ButtonSegment(value: 2, label: Text(tr('Quick'))),
               ],
               selected: {pace},
               showSelectedIcon: false,
@@ -2571,6 +2632,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           if (mounted) startWalkthrough();
         });
       },
+      onRefresh: (refresh) => refreshRoute = refresh,
     );
   }
 
@@ -2743,7 +2805,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                     shape: const CircleBorder(),
                     minimumSize: const Size(48, 48),
                   ),
-                  tooltip: 'Skip walkthrough',
+                  tooltip: tr('Skip walkthrough'),
                   icon: const Icon(Icons.close, size: 20),
                 ),
               ),
@@ -2866,6 +2928,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     String title,
     Widget content, {
     void Function(BuildContext context)? onHelp,
+    void Function(VoidCallback refresh)? onRefresh,
   }) {
     final context = scaffold.currentContext;
     if (context == null) return;
@@ -2873,62 +2936,79 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     advanceTimer?.cancel();
     showDialog<void>(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(26),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: txt(
-                        eyebrow.toUpperCase(),
-                        size: 8,
-                        color: muted,
-                        spacing: 1.4,
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Close',
-                      onPressed: () => Navigator.pop(context),
-                      icon: smallIcon(Icons.close),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                txt(title, size: 27, weight: FontWeight.w600, height: 1.2),
-                const SizedBox(height: 17),
-                content,
-                const SizedBox(height: 23),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (onHelp != null) ...[
-                      TextButton.icon(
-                        onPressed: () => onHelp(context),
-                        icon: const Icon(Icons.help_outline, size: 17),
-                        label: const Text('Help'),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    action(
-                      'Got it',
-                      () => Navigator.pop(context),
-                      icon: Icons.check,
-                      primary: true,
-                    ),
-                  ],
-                ),
-              ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, updateRoute) {
+          onRefresh?.call(() => updateRoute(() {}));
+          return Dialog(
+            backgroundColor: surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-          ),
-        ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(26),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: txt(
+                            eyebrow.toUpperCase(),
+                            size: 8,
+                            color: muted,
+                            spacing: 1.4,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: tr('Close'),
+                          onPressed: () => Navigator.pop(context),
+                          icon: smallIcon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    txt(title, size: 27, weight: FontWeight.w600, height: 1.2),
+                    const SizedBox(height: 17),
+                    content,
+                    const SizedBox(height: 23),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (onHelp != null) ...[
+                          TextButton.icon(
+                            onPressed: () => onHelp(context),
+                            icon: const Icon(Icons.help_outline, size: 17),
+                            label: Text(tr('Help')),
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size(64, 40),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                              textStyle: const TextStyle(fontSize: 11),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        action(
+                          tr('Got it'),
+                          () => Navigator.pop(context),
+                          icon: Icons.check,
+                          primary: true,
+                          compact: true,
+                          compactPadding: 6,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     ).whenComplete(() {
       if (!mounted) return;

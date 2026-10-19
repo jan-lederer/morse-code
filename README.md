@@ -40,8 +40,8 @@ flutter build apk --release
 flutter build web --release --no-web-resources-cdn
 ```
 
-The Android application ID is `studio.dit.dit_morse`. Its version and build
-number come from `pubspec.yaml` (currently `1.8.0+43`). Build both Android
+The Android application ID is `com.morse_code`. Its version and build
+number come from `pubspec.yaml` (currently `1.8.0+48`). Build both Android
 release formats with:
 
 ```sh

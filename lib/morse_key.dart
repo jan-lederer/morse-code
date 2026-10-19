@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_strings.dart';
+
 /// Shared touch key for the tree and practice views.
 class MorseKey extends StatelessWidget {
   final bool dark, pressed, holdDash;
@@ -25,14 +27,14 @@ class MorseKey extends StatelessWidget {
     Color? color,
     FontWeight weight = FontWeight.w400,
   }) => Text(
-    text,
+    tr(text),
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
     style: TextStyle(fontSize: size, color: color ?? ink, fontWeight: weight),
   );
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Morse key. Tap for dot. Hold for dash.',
+    label: tr('Morse key. Tap for dot. Hold for dash.'),
     button: true,
     child: Listener(
       onPointerDown: onDown,

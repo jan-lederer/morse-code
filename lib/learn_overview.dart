@@ -4,6 +4,7 @@ import 'morse.dart';
 import 'practice_controls.dart';
 import 'progress_history.dart';
 import 'practice_content.dart';
+import 'app_strings.dart';
 
 class LearnOverview extends StatefulWidget {
   const LearnOverview({
@@ -105,7 +106,7 @@ class _LearnOverviewState extends State<LearnOverview> {
         key: key,
         style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: ink),
       ),
-      Text(label, style: TextStyle(fontSize: 11, color: muted)),
+      Text(tr(label), style: TextStyle(fontSize: 11, color: muted)),
     ],
   );
 
@@ -116,7 +117,7 @@ class _LearnOverviewState extends State<LearnOverview> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Your progress',
+          tr('Your progress'),
           style: TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w600,
@@ -125,7 +126,7 @@ class _LearnOverviewState extends State<LearnOverview> {
         ),
         const SizedBox(height: 4),
         Text(
-          'An overview of your learning, across every mode.',
+          tr('An overview of your learning, across every mode.'),
           style: TextStyle(fontSize: 12, color: muted),
         ),
         const SizedBox(height: 18),
@@ -137,7 +138,7 @@ class _LearnOverviewState extends State<LearnOverview> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Your current level',
+                  tr('Your current level'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -146,12 +147,14 @@ class _LearnOverviewState extends State<LearnOverview> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Mistakes move an item back. Stronger items appear less often.',
+                  tr(
+                    'Mistakes move an item back. Stronger items appear less often.',
+                  ),
                   style: TextStyle(fontSize: 11, color: muted),
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Letters & numbers · all practice modes',
+                  tr('Letters & numbers · all practice modes'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -165,7 +168,7 @@ class _LearnOverviewState extends State<LearnOverview> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Words',
+                  tr('Words'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -180,7 +183,7 @@ class _LearnOverviewState extends State<LearnOverview> {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Sentences',
+                  tr('Sentences'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -204,9 +207,9 @@ class _LearnOverviewState extends State<LearnOverview> {
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Overall · all time',
+                      tr('Overall · all time'),
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -221,7 +224,7 @@ class _LearnOverviewState extends State<LearnOverview> {
               progress(overall.letters.length, 36),
               const SizedBox(height: 6),
               Text(
-                'Characters answered correctly',
+                tr('Characters answered correctly'),
                 style: TextStyle(fontSize: 11, color: muted),
               ),
               const SizedBox(height: 18),
@@ -229,14 +232,14 @@ class _LearnOverviewState extends State<LearnOverview> {
                 children: [
                   Expanded(
                     child: metric(
-                      'Score · correct / answers',
+                      tr('Score · correct / answers'),
                       '${overall.correct} / ${overall.attempts}',
                       key: const ValueKey('learn-overall-score'),
                     ),
                   ),
                   Expanded(
                     child: metric(
-                      'Accuracy',
+                      tr('Accuracy'),
                       overall.accuracy == null ? '—' : '${overall.accuracy}%',
                       key: const ValueKey('learn-overall-accuracy'),
                     ),
@@ -245,7 +248,7 @@ class _LearnOverviewState extends State<LearnOverview> {
               ),
               const SizedBox(height: 14),
               metric(
-                'Exams passed',
+                tr('Exams passed'),
                 '${widget.examsPassed}',
                 key: const ValueKey('learn-exams-passed'),
               ),
@@ -254,7 +257,7 @@ class _LearnOverviewState extends State<LearnOverview> {
         ),
         const SizedBox(height: 22),
         Text(
-          'By practice mode',
+          tr('By practice mode'),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -272,9 +275,12 @@ class _LearnOverviewState extends State<LearnOverview> {
             key: const PageStorageKey('learn-metrics'),
             tilePadding: EdgeInsets.zero,
             childrenPadding: const EdgeInsets.only(top: 8),
-            title: const Text('More metrics', style: TextStyle(fontSize: 15)),
+            title: Text(
+              tr('More metrics'),
+              style: const TextStyle(fontSize: 15),
+            ),
             subtitle: Text(
-              'Dates, modes, chapters & character details',
+              tr('Dates, modes, chapters & character details'),
               style: TextStyle(fontSize: 11, color: muted),
             ),
             children: [_metrics()],
@@ -285,16 +291,19 @@ class _LearnOverviewState extends State<LearnOverview> {
           ExpansionTile(
             key: const PageStorageKey('learn-chapters'),
             tilePadding: EdgeInsets.zero,
-            title: const Text('Chapters', style: TextStyle(fontSize: 15)),
+            title: Text(tr('Chapters'), style: const TextStyle(fontSize: 15)),
             subtitle: Text(
-              'Two focused steps, at your own pace',
+              tr('Two focused steps, at your own pace'),
               style: TextStyle(fontSize: 11, color: muted),
             ),
             children: [
               for (final lesson in widget.lessons)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(lesson.$1, style: const TextStyle(fontSize: 13)),
+                  title: Text(
+                    tr(lesson.$1),
+                    style: const TextStyle(fontSize: 13),
+                  ),
                   subtitle: Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: progress(
@@ -350,7 +359,7 @@ class _LearnOverviewState extends State<LearnOverview> {
                       children: [
                         Expanded(
                           child: Text(
-                            sending ? 'Sending' : 'Listening',
+                            tr(sending ? 'Sending' : 'Listening'),
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -365,14 +374,14 @@ class _LearnOverviewState extends State<LearnOverview> {
                       ],
                     ),
                     Text(
-                      sending ? 'Signals or choices' : 'Typed or choices',
+                      tr(sending ? 'Signals or choices' : 'Typed or choices'),
                       style: TextStyle(fontSize: 10, color: muted),
                     ),
                     const SizedBox(height: 7),
                     progress(summary.letters.length, 36),
                     const SizedBox(height: 5),
                     Text(
-                      '${summary.correct} / ${summary.attempts} correct',
+                      tr('${summary.correct} / ${summary.attempts} correct'),
                       key: ValueKey('learn-mode-${mode.name}-score'),
                       style: TextStyle(fontSize: 11, color: muted),
                     ),
@@ -426,10 +435,10 @@ class _LearnOverviewState extends State<LearnOverview> {
         DropdownButtonFormField<ProgressPeriod>(
           key: const ValueKey('metrics-period'),
           initialValue: _period,
-          decoration: const InputDecoration(labelText: 'Time period'),
+          decoration: InputDecoration(labelText: tr('Time period')),
           isExpanded: true,
           items: ProgressPeriod.values
-              .map((p) => DropdownMenuItem(value: p, child: Text(p.label)))
+              .map((p) => DropdownMenuItem(value: p, child: Text(tr(p.label))))
               .toList(),
           onChanged: (value) {
             if (value != null) setState(() => _period = value);
@@ -439,10 +448,10 @@ class _LearnOverviewState extends State<LearnOverview> {
         DropdownButtonFormField<String>(
           key: const ValueKey('metrics-mode'),
           initialValue: _mode?.name ?? 'all',
-          decoration: const InputDecoration(labelText: 'Practice mode'),
+          decoration: InputDecoration(labelText: tr('Practice mode')),
           isExpanded: true,
           items: [
-            const DropdownMenuItem(value: 'all', child: Text('All modes')),
+            DropdownMenuItem(value: 'all', child: Text(tr('All modes'))),
             for (final mode in PracticeMode.values)
               DropdownMenuItem(value: mode.name, child: Text(mode.label)),
           ],
@@ -456,14 +465,14 @@ class _LearnOverviewState extends State<LearnOverview> {
         DropdownButtonFormField<String>(
           key: const ValueKey('metrics-group'),
           initialValue: _characters ?? 'all',
-          decoration: const InputDecoration(labelText: 'Character group'),
+          decoration: InputDecoration(labelText: tr('Character group')),
           isExpanded: true,
           items: groups.entries
               .map(
                 (e) => DropdownMenuItem(
                   value: e.key ?? 'all',
                   child: Text(
-                    e.value,
+                    tr(e.value),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -475,12 +484,14 @@ class _LearnOverviewState extends State<LearnOverview> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Rolling 24 hours, 7, 30 or 365 days. Overview above stays all-time.',
+          tr(
+            'Rolling 24 hours, 7, 30 or 365 days. Overview above stays all-time.',
+          ),
           style: TextStyle(fontSize: 10, color: muted),
         ),
         const SizedBox(height: 16),
         Text(
-          '${summary.correct} / ${summary.attempts} correct',
+          tr('${summary.correct} / ${summary.attempts} correct'),
           key: const ValueKey('metrics-score'),
           style: TextStyle(
             fontSize: 20,
@@ -494,39 +505,41 @@ class _LearnOverviewState extends State<LearnOverview> {
           runSpacing: 12,
           children: [
             metric(
-              'Accuracy',
+              tr('Accuracy'),
               summary.accuracy == null ? '—' : '${summary.accuracy}%',
             ),
             metric(
-              'Characters correct',
+              tr('Characters correct'),
               '${summary.letters.length} / ${characters.length}',
             ),
-            metric('Practices', '${summary.sessions}'),
-            metric('Active days', '${summary.activeDays}'),
-            metric('Current correct streak', '${summary.streak}'),
+            metric(tr('Practices'), '${summary.sessions}'),
+            metric(tr('Active days'), '${summary.activeDays}'),
+            metric(tr('Current correct streak'), '${summary.streak}'),
           ],
         ),
         if (summary.attempts == 0)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
-            child: Text('No answers match these filters yet.'),
+            child: Text(tr('No answers match these filters yet.')),
           ),
         if (widget.history.hasEarlierResults)
           Padding(
             padding: const EdgeInsets.only(top: 16),
             child: Text(
-              'Earlier results are retained in overall totals. Mode, date, chapter scores and detailed metrics start with this update.',
+              tr(
+                'Earlier results are retained in overall totals. Mode, date, chapter scores and detailed metrics start with this update.',
+              ),
               style: TextStyle(fontSize: 11, color: muted),
             ),
           ),
         if (rows.isNotEmpty) ...[
           const SizedBox(height: 18),
-          const Text(
-            'Character details',
+          Text(
+            tr('Character details'),
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           Text(
-            'Most missed first',
+            tr('Most missed first'),
             style: TextStyle(fontSize: 10, color: muted),
           ),
           const SizedBox(height: 6),
@@ -544,7 +557,7 @@ class _LearnOverviewState extends State<LearnOverview> {
                   ),
                   Expanded(
                     child: Text(
-                      '${row.$2} / ${row.$3} correct',
+                      tr('${row.$2} / ${row.$3} correct'),
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),

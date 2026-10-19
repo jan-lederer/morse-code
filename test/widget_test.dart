@@ -10,6 +10,37 @@ void main() {
     expect(find.text('morse.'), findsOneWidget);
     expect(find.text('dit.'), findsNothing);
   });
+  testWidgets('settings language changes app UI but leaves tab names alone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const DitApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('language-selector')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('language-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('DE').last);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'after selecting German');
+    expect(find.text('EINSTELLUNGEN'), findsOneWidget);
+    expect(find.text('Sprache'), findsOneWidget);
+    expect(find.text('Dein Rhythmus, deine Regeln.'), findsOneWidget);
+    await tester.tap(find.text('Verstanden'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'after closing settings');
+    expect(find.text('Learn'), findsOneWidget);
+    await tester.tap(find.text('Learn'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'after opening Learn');
+    expect(find.text('Dein Fortschritt'), findsOneWidget);
+    expect(find.text('Learn'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   test('all standard characters have unique signals and round-trip', () {
     expect(morse.length, 36);
     expect(morse.values.toSet().length, 36);
@@ -80,6 +111,7 @@ void main() {
         closeTo(tester.getTopLeft(find.text('Got it')).dy, 10),
       );
       expect(find.byTooltip('Open-source licenses'), findsOneWidget);
+      expect(find.byKey(const ValueKey('privacy-policy-link')), findsOneWidget);
       expect(find.text('Open-source licenses'), findsNothing);
       expect(
         find.text('Little adjustments for a more comfortable practice.'),

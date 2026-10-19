@@ -8,6 +8,7 @@ import 'morse.dart';
 import 'practice_controls.dart';
 import 'practice_content.dart';
 import 'platform_service.dart';
+import 'app_strings.dart';
 
 class RecognitionWorkspace extends StatefulWidget {
   const RecognitionWorkspace({
@@ -325,7 +326,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
     child: Column(
       children: [
         Text(
-          _phrases ? 'NAME THIS WORD OR SENTENCE' : 'NAME THIS CHARACTER',
+          tr(_phrases ? 'NAME THIS WORD OR SENTENCE' : 'NAME THIS CHARACTER'),
           style: TextStyle(fontSize: 9, color: _muted),
         ),
         Expanded(
@@ -333,8 +334,8 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
             child: _hideHint
                 ? Text(
                     _sound || _vibration
-                        ? 'Listen or feel the signal'
-                        : 'Show the hint or enable sound in Settings',
+                        ? tr('Listen or feel the signal')
+                        : tr('Show the hint or enable sound in Settings'),
                     textAlign: TextAlign.center,
                     style: TextStyle(color: _muted, fontSize: 12),
                   )
@@ -382,7 +383,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                 key: const ValueKey('terminal-new-exam'),
                 onPressed: widget.onNewSession,
                 icon: const Icon(Icons.refresh, size: 15),
-                label: const Text('New exam'),
+                label: Text(tr('New exam')),
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -398,10 +399,10 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                 liveRegion: true,
                 child: Text(
                   widget.examStatus == 'failed'
-                      ? 'Exam failed · three mistakes'
+                      ? tr('Exam failed · three mistakes')
                       : widget.examStatus == 'passed'
-                      ? 'Exam passed!'
-                      : _feedback,
+                      ? tr('Exam passed!')
+                      : tr(_feedback),
                   key: const ValueKey('recognition-feedback'),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -500,8 +501,10 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                     LengthLimitingTextInputFormatter(1),
                   ],
             decoration: InputDecoration(
-              labelText: _phrases ? 'Type the word or sentence' : 'Your answer',
-              hintText: _phrases ? 'Type what you heard' : 'A–Z or 0–9',
+              labelText: tr(
+                _phrases ? 'Type the word or sentence' : 'Your answer',
+              ),
+              hintText: tr(_phrases ? 'Type what you heard' : 'A–Z or 0–9'),
               filled: true,
               fillColor: _surface,
               border: OutlineInputBorder(
@@ -518,7 +521,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
           onPressed: _correct || widget.examStatus.isNotEmpty
               ? null
               : () => _submit(_answer.text),
-          child: const Text('Check'),
+          child: Text(tr('Check')),
         ),
       ],
     );
@@ -538,7 +541,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
           ),
         ),
         IconButton(
-          tooltip: 'Skip letter',
+          tooltip: tr('Skip letter'),
           onPressed: widget.examMode ? null : _next,
           icon: Icon(Icons.skip_next_outlined, color: _muted),
         ),

@@ -1,11 +1,13 @@
 name: dit_morse
 description: Learn Morse code, one small signal at a time.
 publish_to: none
-version: 1.8.0+43
+version: 1.8.0+48
 environment:
   sdk: ^3.13.5
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
 dev_dependencies:
   flutter_test:

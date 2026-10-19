@@ -22,6 +22,8 @@ external JSPromise<JSNumber> _playPattern(
 external void _stopPattern();
 @JS('ditCanVibrate')
 external JSBoolean _canVibrate();
+@JS('ditOpenPrivacyPolicy')
+external void _openPrivacyPolicy();
 
 class DeviceService {
   static Future<String?> version() async {
@@ -52,6 +54,7 @@ class DeviceService {
 
   static void stopPattern() => _stopPattern();
   static Future<void> save(String value) async => _save(value.toJS);
+  static Future<void> openPrivacyPolicy() async => _openPrivacyPolicy();
   static void tone(bool enabled) => _tone(enabled.toJS);
   static void vibrate(int duration) => _vibrate(duration.toJS);
   static void cancelVibration() => _cancelVibration();

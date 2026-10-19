@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'morse.dart';
 import 'morse_tree.dart';
 import 'morse_key.dart';
+import 'app_strings.dart';
 
 /// The tree and key share a bounded viewport, even on short phones or landscape.
 class TouchWorkspace extends StatelessWidget {
@@ -58,7 +59,7 @@ class TouchWorkspace extends StatelessWidget {
     FontWeight weight = FontWeight.w400,
     double? spacing,
   }) => Text(
-    text,
+    tr(text),
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
     style: TextStyle(
@@ -91,7 +92,7 @@ class TouchWorkspace extends StatelessWidget {
                   children: [
                     Expanded(
                       child: label(
-                        'Morse tree',
+                        'The Morse tree',
                         size: 17,
                         weight: FontWeight.w600,
                       ),
@@ -113,7 +114,7 @@ class TouchWorkspace extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'How it works',
+                      tooltip: tr('How it works'),
                       onPressed: onHelp,
                       visualDensity: VisualDensity.compact,
                       icon: Icon(Icons.info_outline, size: 18, color: muted),
@@ -189,7 +190,7 @@ class TouchWorkspace extends StatelessWidget {
                   Expanded(child: manualButton('Dash', Icons.remove, onDash)),
                   const SizedBox(width: 7),
                   IconButton.filledTonal(
-                    tooltip: 'Finish letter',
+                    tooltip: tr('Finish letter'),
                     onPressed: onCommit,
                     style: IconButton.styleFrom(
                       backgroundColor: surface,
@@ -229,7 +230,7 @@ class TouchWorkspace extends StatelessWidget {
       FilledButton.icon(
         onPressed: onTap,
         icon: Icon(icon, size: 14),
-        label: Text(text),
+        label: Text(tr(text)),
         style: FilledButton.styleFrom(
           backgroundColor: surface,
           foregroundColor: ink,
@@ -256,9 +257,9 @@ class TouchWorkspace extends StatelessWidget {
         Expanded(
           child: Semantics(
             liveRegion: true,
-            label: 'Your message: $message',
+            label: '${tr('Your message')}: $message',
             child: Text(
-              message.isEmpty ? 'Your message…' : message,
+              message.isEmpty ? tr('Your message…') : message,
               key: const ValueKey('compact-message'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -272,17 +273,17 @@ class TouchWorkspace extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: 'Add space',
+          tooltip: tr('Add space'),
           onPressed: onSpace,
           icon: Icon(Icons.space_bar, size: 18, color: muted),
         ),
         IconButton(
-          tooltip: 'Delete last signal or character',
+          tooltip: tr('Delete last signal or character'),
           onPressed: onDelete,
           icon: Icon(Icons.backspace_outlined, size: 17, color: muted),
         ),
         IconButton(
-          tooltip: 'Clear message',
+          tooltip: tr('Clear message'),
           onPressed: onClear,
           icon: Icon(Icons.delete_outline, size: 18, color: muted),
         ),

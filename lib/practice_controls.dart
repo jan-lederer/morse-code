@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
+import 'app_strings.dart';
+
 enum PracticeMode {
   send('Send signals'),
   type('Type an answer'),
   choices('4 choices'),
   sendChoices('Send · 4 choices');
 
-  const PracticeMode(this.label);
-  final String label;
+  const PracticeMode(this.englishLabel);
+  final String englishLabel;
+  String get label => tr(englishLabel);
 }
 
 class MasteryDistributionBar extends StatelessWidget {
@@ -35,8 +38,9 @@ class MasteryDistributionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final order = [2, 1, 0];
     return Semantics(
-      label:
-          'Current practice set proficiency: green ${counts[2]}, yellow ${counts[1]}, red ${counts[0]}',
+      label: tr(
+        'Current practice set proficiency: green ${counts[2]}, yellow ${counts[1]}, red ${counts[0]}',
+      ),
       child: SizedBox(
         key: const ValueKey('mastery-distribution'),
         width: double.infinity,
@@ -131,31 +135,31 @@ class PracticeStats extends StatelessWidget {
             children: [
               _stat(
                 '$correct',
-                'Correct',
+                tr('Correct'),
                 key: const ValueKey('practice-correct'),
               ),
               _stat(
                 attempts == 0 ? '0%' : '${(correct / attempts * 100).round()}%',
-                'Accuracy',
+                tr('Accuracy'),
               ),
-              _stat('$attempts', 'Answers'),
+              _stat('$attempts', tr('Answers')),
             ],
           )
         : Row(
             children: [
               _stat(
                 '$examQuestion / 20',
-                'Question',
+                tr('Question'),
                 key: const ValueKey('exam-question'),
               ),
-              _stat('$examLives', 'Lives'),
+              _stat('$examLives', tr('Lives')),
               Expanded(
                 child: Text(
                   examStatus == 'passed'
-                      ? 'PASSED'
+                      ? tr('PASSED')
                       : examStatus == 'failed'
-                      ? 'FAILED'
-                      : 'Exam',
+                      ? tr('FAILED')
+                      : tr('Exam'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 10,
@@ -210,7 +214,7 @@ class PracticeHeader extends StatelessWidget {
               key: ValueKey(
                 'practice-direction-${sending ? 'send' : 'listen'}',
               ),
-              tooltip: sending ? 'Sending mode' : 'Listening mode',
+              tooltip: tr(sending ? 'Sending mode' : 'Listening mode'),
               isSelected: _sending == sending,
               onPressed: exam
                   ? null
@@ -237,8 +241,8 @@ class PracticeHeader extends StatelessWidget {
         const SizedBox(width: 8),
         SegmentedButton<bool>(
           key: const ValueKey('practice-answer-style'),
-          segments: const [
-            ButtonSegment(value: false, label: Text('Type')),
+          segments: [
+            ButtonSegment(value: false, label: Text(tr('Type'))),
             ButtonSegment(value: true, label: Text('4')),
           ],
           selected: {_choices},
@@ -263,7 +267,7 @@ class PracticeHeader extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: Tooltip(
-            message: 'Practice set: ${groups[group] ?? group}',
+            message: tr('Practice set: ${groups[group] ?? group}'),
             child: DropdownButton<String>(
               key: const ValueKey('practice-group'),
               value: group,
@@ -301,7 +305,7 @@ class PracticeHeader extends StatelessWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              e.value,
+                              tr(e.value),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               softWrap: false,
@@ -320,7 +324,7 @@ class PracticeHeader extends StatelessWidget {
         ),
         if (onNewSession != null)
           IconButton(
-            tooltip: exam ? 'Start new exam' : 'New practice',
+            tooltip: tr(exam ? 'Start new exam' : 'New practice'),
             onPressed: onNewSession,
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
@@ -366,7 +370,7 @@ class PracticeSignalActions extends StatelessWidget {
               size: 16,
             ),
             label: Text(
-              playing ? 'Stop' : 'Listen',
+              tr(playing ? 'Stop' : 'Listen'),
               style: const TextStyle(fontSize: 11),
             ),
             style: TextButton.styleFrom(
@@ -375,7 +379,7 @@ class PracticeSignalActions extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: hideHint ? 'Show hint' : 'Hide hint',
+          tooltip: tr(hideHint ? 'Show hint' : 'Hide hint'),
           onPressed: onHint,
           visualDensity: VisualDensity.compact,
           icon: Icon(

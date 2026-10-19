@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'morse.dart';
 import 'morse_key.dart';
 import 'practice_controls.dart';
+import 'app_strings.dart';
 
 /// Keeps the target, key, feedback, and progress in one bounded viewport.
 class PracticeWorkspace extends StatelessWidget {
@@ -77,7 +78,7 @@ class PracticeWorkspace extends StatelessWidget {
     FontWeight weight = FontWeight.w400,
     Key? key,
   }) => Text(
-    text,
+    tr(text),
     key: key,
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
@@ -241,7 +242,7 @@ class PracticeWorkspace extends StatelessWidget {
                 key: const ValueKey('terminal-new-exam'),
                 onPressed: onNewSession,
                 icon: const Icon(Icons.refresh, size: 15),
-                label: const Text('New exam'),
+                label: Text(tr('New exam')),
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -339,13 +340,13 @@ class PracticeWorkspace extends StatelessWidget {
             Expanded(child: manualButton('Dash', Icons.remove, onDash)),
             const SizedBox(width: 6),
             IconButton.filledTonal(
-              tooltip: 'Finish letter',
+              tooltip: tr('Finish letter'),
               onPressed: _locked ? null : onCommit,
               style: IconButton.styleFrom(backgroundColor: surface),
               icon: Icon(Icons.check, size: 19, color: ink),
             ),
             IconButton(
-              tooltip: 'Skip letter',
+              tooltip: tr('Skip letter'),
               onPressed: examMode ? null : onNext,
               icon: Icon(Icons.skip_next_outlined, size: 23, color: muted),
             ),
@@ -395,7 +396,7 @@ class PracticeWorkspace extends StatelessWidget {
       FilledButton.icon(
         onPressed: _locked ? null : onTap,
         icon: Icon(icon, size: 12),
-        label: Text(text),
+        label: Text(tr(text)),
         style: FilledButton.styleFrom(
           backgroundColor: surface,
           foregroundColor: ink,
