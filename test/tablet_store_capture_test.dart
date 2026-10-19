@@ -21,11 +21,12 @@ void main() {
     await tester.pumpWidget(
       const RepaintBoundary(key: rootKey, child: DitApp()),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(find.byTooltip('Switch to dark mode'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
 
     Future<void> save(String page) async {
+      await tester.pump(const Duration(milliseconds: 250));
       expect(tester.takeException(), isNull, reason: '$device $page layout');
       final boundary = tester.renderObject<RenderRepaintBoundary>(
         find.byKey(rootKey),
@@ -40,20 +41,20 @@ void main() {
 
     await save('morse-tree');
     await tester.tap(find.text('Learn').first);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
     await save('learn');
     await tester.tap(find.text('Practice').first);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
     await save('practice');
     await tester.tap(find.byKey(const ValueKey('practice-direction-listen')));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('practice-answer-style')),
         matching: find.text('4'),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
     await save('listening-choices');
   }
 
