@@ -41,10 +41,21 @@ flutter build web --release --no-web-resources-cdn
 ```
 
 The Android application ID is `studio.dit.dit_morse`. Its version and build
-number come from `pubspec.yaml` (currently `1.6.0+32`). Release builds use the
-generated Android debug signing key; keep that key to install updates. Store
-releases should use a private release key. Updates need the same application
-ID and signing key, plus a higher build number.
+number come from `pubspec.yaml` (currently `1.8.0+35`). Build both Android
+release formats with:
+
+```sh
+flutter build apk --release
+flutter build appbundle --release
+```
+
+For Play Store submission, create a private upload keystore and save its
+credentials in the ignored `android/key.properties` file. Use these property
+names: `storePassword`, `keyPassword`, `keyAlias`, and `storeFile` (the keystore
+path, relative to `android/app`). Release builds use that key when the file is
+present; without it they use the debug key and are only for local installation.
+Keep the keystore and passwords backed up securely. Store updates need the same
+application ID and upload key, plus a higher build number.
 
 Additional signal checks:
 

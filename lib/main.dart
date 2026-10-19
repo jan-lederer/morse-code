@@ -141,6 +141,16 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   List<String> _sendChoices = [];
   SignalTone? inputTone;
   bool practiceSuspended = false, dialogOpen = false;
+  int? walkthroughStep;
+  final walkthroughTargetKey = GlobalKey();
+  Rect? walkthroughTargetRect;
+  static const _walkthroughPages = [0, 1, 2, 3];
+  static const _walkthroughCopy = [
+    ('Learn', 'Follow your progress and choose what to practise next.'),
+    ('Morse tree', 'Tap a branch to hear and explore each Morse letter.'),
+    ('Practice', 'Listen and send signals to build your recognition skills.'),
+    ('Alphabet', 'Look up letters, numbers, and their Morse patterns.'),
+  ];
   bool holdDash = false;
   int? activePointer;
   String get visibleCode => pressed
@@ -760,103 +770,109 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           final wide = constraints.maxWidth >= 1050;
           final shortInput =
               (page == 1 || page == 2) && !wide && constraints.maxHeight < 450;
-          return Scaffold(
-            key: scaffold,
-            backgroundColor: bg,
-            body: SafeArea(
-              child: Row(
-                children: [
-                  if (wide) sidebar(),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        topbar(wide, compact: shortInput),
-                        Expanded(
-                          child: Focus(
-                            focusNode: focus,
-                            autofocus: true,
-                            onKeyEvent: (node, event) {
-                              if (event.logicalKey !=
-                                      LogicalKeyboardKey.space ||
-                                  (page != 1 && page != 2) ||
-                                  (page == 2 &&
-                                      practiceMode != PracticeMode.send)) {
-                                return KeyEventResult.ignored;
-                              }
-                              if (event is KeyDownEvent) begin();
-                              if (event is KeyUpEvent) end();
-                              return KeyEventResult.handled;
-                            },
-                            child: page == 2
-                                ? practicePage()
-                                : page == 1 && !wide
-                                ? touchTreePage()
-                                : SingleChildScrollView(
-                                    padding: EdgeInsets.fromLTRB(
-                                      wide ? 34 : 20,
-                                      wide ? 34 : 25,
-                                      wide ? 34 : 20,
-                                      24,
-                                    ),
-                                    child: Center(
-                                      child: ConstrainedBox(
-                                        constraints: const BoxConstraints(
-                                          maxWidth: 1300,
+          return Stack(
+            children: [
+              Scaffold(
+                key: scaffold,
+                backgroundColor: bg,
+                body: SafeArea(
+                  child: Row(
+                    children: [
+                      if (wide) sidebar(),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            topbar(wide, compact: shortInput),
+                            Expanded(
+                              child: Focus(
+                                focusNode: focus,
+                                autofocus: true,
+                                onKeyEvent: (node, event) {
+                                  if (event.logicalKey !=
+                                          LogicalKeyboardKey.space ||
+                                      (page != 1 && page != 2) ||
+                                      (page == 2 &&
+                                          practiceMode != PracticeMode.send)) {
+                                    return KeyEventResult.ignored;
+                                  }
+                                  if (event is KeyDownEvent) begin();
+                                  if (event is KeyUpEvent) end();
+                                  return KeyEventResult.handled;
+                                },
+                                key: walkthroughTargetKey,
+                                child: page == 2
+                                    ? practicePage()
+                                    : page == 1 && !wide
+                                    ? touchTreePage()
+                                    : SingleChildScrollView(
+                                        padding: EdgeInsets.fromLTRB(
+                                          wide ? 34 : 20,
+                                          wide ? 34 : 25,
+                                          wide ? 34 : 20,
+                                          24,
                                         ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            if (page == 0)
-                                              learnPage()
-                                            else if (page == 1)
-                                              treePage()
-                                            else
-                                              alphabetPage(),
-                                            const SizedBox(height: 32),
-                                            footer(),
-                                          ],
+                                        child: Center(
+                                          child: ConstrainedBox(
+                                            constraints: const BoxConstraints(
+                                              maxWidth: 1300,
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                if (page == 0)
+                                                  learnPage()
+                                                else if (page == 1)
+                                                  treePage()
+                                                else
+                                                  alphabetPage(),
+                                                const SizedBox(height: 32),
+                                                footer(),
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                          ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            bottomNavigationBar: wide
-                ? null
-                : NavigationBar(
-                    selectedIndex: page,
-                    onDestinationSelected: switchPage,
-                    backgroundColor: surface,
-                    indicatorColor: soft,
-                    height: shortInput ? 56 : 72,
-                    labelBehavior:
-                        NavigationDestinationLabelBehavior.alwaysShow,
-                    destinations: const [
-                      NavigationDestination(
-                        icon: Icon(Icons.menu_book_outlined),
-                        label: 'Learn',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.account_tree_outlined),
-                        label: 'Morse tree',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.bolt_outlined),
-                        label: 'Practice',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.grid_view_rounded),
-                        label: 'Alphabet',
                       ),
                     ],
                   ),
+                ),
+                bottomNavigationBar: wide
+                    ? null
+                    : NavigationBar(
+                        selectedIndex: page,
+                        onDestinationSelected: switchPage,
+                        backgroundColor: surface,
+                        indicatorColor: soft,
+                        height: shortInput ? 56 : 72,
+                        labelBehavior:
+                            NavigationDestinationLabelBehavior.alwaysShow,
+                        destinations: const [
+                          NavigationDestination(
+                            icon: Icon(Icons.menu_book_outlined),
+                            label: 'Learn',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.account_tree_outlined),
+                            label: 'Morse tree',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.bolt_outlined),
+                            label: 'Practice',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.grid_view_rounded),
+                            label: 'Alphabet',
+                          ),
+                        ],
+                      ),
+              ),
+              if (walkthroughStep != null) _walkthroughOverlay(),
+            ],
           );
         },
       ),
@@ -2369,19 +2385,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     cancelInput();
     stopPlayback();
     dialog(
-      'MAKE IT YOURS',
+      'SETTINGS',
       'Your rhythm, your rules.',
       StatefulBuilder(
         builder: (context, update) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            txt(
-              'Little adjustments for a more comfortable practice.',
-              size: 13,
-              color: muted,
-              height: 1.7,
-            ),
-            const SizedBox(height: 8),
             Text(
               appVersion.isEmpty ? 'Version …' : 'Version $appVersion',
               key: const ValueKey('app-version'),
@@ -2441,6 +2450,26 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               color: muted,
               height: 1.8,
             ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                Future<void>.delayed(const Duration(milliseconds: 220), () {
+                  if (mounted) startWalkthrough();
+                });
+              },
+              icon: const Icon(Icons.help_outline, size: 17),
+              label: const Text('Walkthrough'),
+            ),
+            TextButton.icon(
+              onPressed: () => showLicensePage(
+                context: context,
+                applicationName: 'morse',
+                applicationVersion: appVersion,
+              ),
+              icon: const Icon(Icons.description_outlined, size: 17),
+              label: const Text('Open-source licenses'),
+            ),
             if (!DeviceService.supportsVibration) ...[
               const SizedBox(height: 12),
               txt(
@@ -2455,6 +2484,161 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       ),
     );
   }
+
+  void startWalkthrough() {
+    cancelInput();
+    stopPlayback();
+    setState(() {
+      walkthroughStep = 0;
+      page = _walkthroughPages.first;
+      walkthroughTargetRect = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _updateWalkthroughTarget(),
+    );
+  }
+
+  void _updateWalkthroughTarget() {
+    if (!mounted || walkthroughStep == null) return;
+    final targetContext = walkthroughTargetKey.currentContext;
+    final overlayContext = scaffold.currentContext;
+    if (targetContext == null || overlayContext == null) return;
+    final target = targetContext.findRenderObject();
+    final overlay = overlayContext.findRenderObject();
+    if (target is! RenderBox || overlay is! RenderBox || !target.hasSize)
+      return;
+    final origin = target.localToGlobal(Offset.zero, ancestor: overlay);
+    final rect = origin & target.size;
+    if (rect != walkthroughTargetRect) {
+      setState(() => walkthroughTargetRect = rect);
+    }
+  }
+
+  void _moveWalkthrough(int delta) {
+    final next = (walkthroughStep! + delta).clamp(
+      0,
+      _walkthroughPages.length - 1,
+    );
+    setState(() {
+      walkthroughStep = next;
+      page = _walkthroughPages[next];
+      walkthroughTargetRect = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _updateWalkthroughTarget(),
+    );
+  }
+
+  Widget _walkthroughOverlay() {
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _updateWalkthroughTarget(),
+    );
+    final step = walkthroughStep!;
+    final copy = _walkthroughCopy[step];
+    return Positioned.fill(
+      child: LayoutBuilder(
+        builder: (context, constraints) => Stack(
+          children: [
+            CustomPaint(
+              size: Size(constraints.maxWidth, constraints.maxHeight),
+              painter: _WalkthroughDimmer(
+                target: walkthroughTargetRect,
+                color: Colors.black.withValues(alpha: .72),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: TextButton(
+                onPressed: () => setState(() => walkthroughStep = null),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: const Color(0xCC202627),
+                ),
+                child: const Text('Skip walkthrough'),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SafeArea(
+                minimum: const EdgeInsets.fromLTRB(64, 16, 64, 18),
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: surface,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black38, blurRadius: 20),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      txt(
+                        'STEP ${step + 1} OF ${_walkthroughPages.length}',
+                        size: 9,
+                        color: muted,
+                        spacing: 1.2,
+                      ),
+                      const SizedBox(height: 7),
+                      txt(copy.$1, size: 19, weight: FontWeight.w600),
+                      const SizedBox(height: 5),
+                      txt(copy.$2, size: 12, color: muted, height: 1.5),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 10,
+              top: constraints.maxHeight / 2 - 26,
+              child: _walkthroughArrow(
+                Icons.arrow_back,
+                'Previous step',
+                step > 0,
+                () => _moveWalkthrough(-1),
+              ),
+            ),
+            Positioned(
+              right: 10,
+              top: constraints.maxHeight / 2 - 26,
+              child: _walkthroughArrow(
+                Icons.arrow_forward,
+                'Next step',
+                true,
+                () {
+                  if (step == _walkthroughPages.length - 1) {
+                    setState(() => walkthroughStep = null);
+                  } else {
+                    _moveWalkthrough(1);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _walkthroughArrow(
+    IconData icon,
+    String label,
+    bool enabled,
+    VoidCallback onPressed,
+  ) => Material(
+    color: surface,
+    shape: const CircleBorder(),
+    child: IconButton(
+      tooltip: label,
+      onPressed: enabled ? onPressed : null,
+      icon: Icon(icon),
+      color: ink,
+      disabledColor: muted.withValues(alpha: .4),
+    ),
+  );
 
   void dialog(String eyebrow, String title, Widget content) {
     final context = scaffold.currentContext;
@@ -2516,4 +2700,35 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       scheduleAdvance();
     });
   }
+}
+
+class _WalkthroughDimmer extends CustomPainter {
+  const _WalkthroughDimmer({required this.target, required this.color});
+  final Rect? target;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()..addRect(Offset.zero & size);
+    if (target != null) {
+      path.addRRect(
+        RRect.fromRectAndRadius(target!.inflate(4), const Radius.circular(12)),
+      );
+      path.fillType = PathFillType.evenOdd;
+    }
+    canvas.drawPath(path, Paint()..color = color);
+    if (target != null) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(target!.inflate(4), const Radius.circular(12)),
+        Paint()
+          ..color = coral
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WalkthroughDimmer oldDelegate) =>
+      oldDelegate.target != target || oldDelegate.color != color;
 }
