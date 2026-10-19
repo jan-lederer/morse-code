@@ -142,14 +142,81 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   SignalTone? inputTone;
   bool practiceSuspended = false, dialogOpen = false;
   int? walkthroughStep;
-  final walkthroughTargetKey = GlobalKey();
+  int _walkthroughTapAnimationSerial = 0;
+  int _walkthroughSpotlightAnimationSerial = 0;
+  bool _walkthroughTransitionPending = false;
+  Timer? _walkthroughTapTimer;
+  final walkthroughTabKeys = List<GlobalKey>.generate(4, (_) => GlobalKey());
+  final walkthroughLearnKey = GlobalKey();
+  final walkthroughTreeKey = GlobalKey();
+  final walkthroughPracticeKey = GlobalKey();
+  final walkthroughPracticeControlsKey = GlobalKey();
+  final walkthroughAlphabetKey = GlobalKey();
   Rect? walkthroughTargetRect;
-  static const _walkthroughPages = [0, 1, 2, 3];
-  static const _walkthroughCopy = [
-    ('Learn', 'Follow your progress and choose what to practise next.'),
-    ('Morse tree', 'Tap a branch to hear and explore each Morse letter.'),
-    ('Practice', 'Listen and send signals to build your recognition skills.'),
-    ('Alphabet', 'Look up letters, numbers, and their Morse patterns.'),
+  Rect? _walkthroughFromTargetRect;
+  List<_WalkthroughStop> get _walkthroughStops => [
+    _WalkthroughStop(
+      page: 0,
+      target: walkthroughTabKeys[0],
+      isTab: true,
+      title: 'Learn tab',
+      description: 'Select this highlighted tab to open your learning overview and progress.',
+    ),
+    _WalkthroughStop(
+      page: 0,
+      target: walkthroughLearnKey,
+      title: 'Proficiency bars',
+      description: 'See how well you know letters, words, and sentences.',
+    ),
+    _WalkthroughStop(
+      page: 0,
+      target: walkthroughTabKeys[1],
+      isTab: true,
+      title: 'Morse tree tab',
+      description:
+          'Select this highlighted tab to open the interactive Morse tree.',
+    ),
+    _WalkthroughStop(
+      page: 1,
+      target: walkthroughTreeKey,
+      title: 'Explore the tree',
+      description:
+          'Follow dots and dashes through the branches to find a letter.',
+    ),
+    _WalkthroughStop(
+      page: 1,
+      target: walkthroughTabKeys[2],
+      isTab: true,
+      title: 'Practice tab',
+      description:
+          'Select this highlighted tab to open listening and sending practice.',
+    ),
+    _WalkthroughStop(
+      page: 2,
+      target: walkthroughPracticeControlsKey,
+      title: 'Practice settings',
+      description: 'Choose a practice mode and select the letters or group you want to work on.',
+    ),
+    _WalkthroughStop(
+      page: 2,
+      target: walkthroughPracticeKey,
+      title: 'Practice a signal',
+      description:
+          'Read the prompt, send its Morse pattern, and track your progress.',
+    ),
+    _WalkthroughStop(
+      page: 2,
+      target: walkthroughTabKeys[3],
+      isTab: true,
+      title: 'Alphabet tab',
+      description: 'Select this highlighted tab to open the letter and number reference.',
+    ),
+    _WalkthroughStop(
+      page: 3,
+      target: walkthroughAlphabetKey,
+      title: 'Look up a character',
+      description: 'Browse a Morse card or search for a letter or number.',
+    ),
   ];
   bool holdDash = false;
   int? activePointer;
@@ -248,6 +315,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     commitTimer?.cancel();
     holdTimer?.cancel();
     advanceTimer?.cancel();
+    _walkthroughTapTimer?.cancel();
     playbackId++;
     DeviceService.stopPattern();
     signalFeedback.cancel();
@@ -625,6 +693,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     double? height,
     double? spacing,
     TextAlign? align,
+    TextDecoration? decoration,
   }) => Text(
     text,
     textAlign: align,
@@ -634,6 +703,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       fontWeight: weight,
       height: height,
       letterSpacing: spacing,
+      decoration: decoration,
     ),
   );
   Widget smallIcon(IconData icon, {double size = 18, Color? color}) =>
@@ -799,7 +869,6 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                                   if (event is KeyUpEvent) end();
                                   return KeyEventResult.handled;
                                 },
-                                key: walkthroughTargetKey,
                                 child: page == 2
                                     ? practicePage()
                                     : page == 1 && !wide
@@ -851,20 +920,24 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                         height: shortInput ? 56 : 72,
                         labelBehavior:
                             NavigationDestinationLabelBehavior.alwaysShow,
-                        destinations: const [
+                        destinations: [
                           NavigationDestination(
+                            key: walkthroughTabKeys[0],
                             icon: Icon(Icons.menu_book_outlined),
                             label: 'Learn',
                           ),
                           NavigationDestination(
+                            key: walkthroughTabKeys[1],
                             icon: Icon(Icons.account_tree_outlined),
                             label: 'Morse tree',
                           ),
                           NavigationDestination(
+                            key: walkthroughTabKeys[2],
                             icon: Icon(Icons.bolt_outlined),
                             label: 'Practice',
                           ),
                           NavigationDestination(
+                            key: walkthroughTabKeys[3],
                             icon: Icon(Icons.grid_view_rounded),
                             label: 'Alphabet',
                           ),
@@ -906,6 +979,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         ...List.generate(
           4,
           (i) => Padding(
+            key: walkthroughTabKeys[i],
             padding: const EdgeInsets.only(bottom: 7),
             child: Material(
               color: page == i ? const Color(0xFF3B4541) : Colors.transparent,
@@ -1171,6 +1245,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     ),
   );
   Widget touchTreePage() => TouchWorkspace(
+    walkthroughTreeKey: walkthroughTreeKey,
     dark: dark,
     numbers: numbers,
     path: visibleCode,
@@ -1277,87 +1352,90 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       ),
     ],
   );
-  Widget treeCard() => panel(
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 9,
-                runSpacing: 6,
-                children: [
-                  txt('The Morse tree', size: 16, weight: FontWeight.w600),
-                  badge('INTERACTIVE', accent: true),
-                ],
+  Widget treeCard() => KeyedSubtree(
+    key: walkthroughTreeKey,
+    child: panel(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 9,
+                  runSpacing: 6,
+                  children: [
+                    txt('The Morse tree', size: 16, weight: FontWeight.w600),
+                    badge('INTERACTIVE', accent: true),
+                  ],
+                ),
               ),
-            ),
-            Tooltip(
-              message: 'Show numbers',
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  txt('0–9', size: 10, color: muted),
-                  SizedBox(
-                    width: 39,
-                    child: Transform.scale(
-                      scale: .65,
-                      child: Switch(
-                        value: numbers,
-                        onChanged: (v) => setState(() => numbers = v),
-                        activeTrackColor: coral,
+              Tooltip(
+                message: 'Show numbers',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    txt('0–9', size: 10, color: muted),
+                    SizedBox(
+                      width: 39,
+                      child: Transform.scale(
+                        scale: .65,
+                        child: Switch(
+                          value: numbers,
+                          onChanged: (v) => setState(() => numbers = v),
+                          activeTrackColor: coral,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          txt(
+            'Left for a dot. Right for a dash. A letter at every stop.',
+            size: 11,
+            color: muted,
+            height: 1.5,
+          ),
+          const SizedBox(height: 17),
+          MorseTree(
+            numbers: numbers,
+            path: visibleCode,
+            dark: dark,
+            onSelect: pickNode,
+          ),
+          const SizedBox(height: 14),
+          Divider(color: line, height: 1),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 20,
+            runSpacing: 8,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.pan_tool_alt_outlined, size: 13, color: muted),
+                  const SizedBox(width: 6),
+                  txt('Whole alphabet · tap a letter', size: 9, color: muted),
                 ],
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 7),
-        txt(
-          'Left for a dot. Right for a dash. A letter at every stop.',
-          size: 11,
-          color: muted,
-          height: 1.5,
-        ),
-        const SizedBox(height: 17),
-        MorseTree(
-          numbers: numbers,
-          path: visibleCode,
-          dark: dark,
-          onSelect: pickNode,
-        ),
-        const SizedBox(height: 14),
-        Divider(color: line, height: 1),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 20,
-          runSpacing: 8,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.pan_tool_alt_outlined, size: 13, color: muted),
-                const SizedBox(width: 6),
-                txt('Whole alphabet · tap a letter', size: 9, color: muted),
-              ],
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(width: 14, height: 2, color: coral),
-                const SizedBox(width: 6),
-                txt('Your signal’s path', size: 9, color: muted),
-              ],
-            ),
-          ],
-        ),
-      ],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 14, height: 2, color: coral),
+                  const SizedBox(width: 6),
+                  txt('Your signal’s path', size: 9, color: muted),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 17),
     ),
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 17),
   );
   Widget inputCard() {
     final code = visibleCode;
@@ -2063,6 +2141,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     examsPassed: examsPassed,
     lessons: lessons,
     dark: dark,
+    walkthroughMasteryKey: walkthroughLearnKey,
     onPractice: (mode, characters) {
       group = characters;
       target = group[0];
@@ -2074,6 +2153,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       practiceMode == PracticeMode.send ||
           practiceMode == PracticeMode.sendChoices
       ? PracticeWorkspace(
+          walkthroughKey: walkthroughPracticeKey,
+          walkthroughControlsKey: walkthroughPracticeControlsKey,
           dark: dark,
           pressed: pressed,
           holdDash: holdDash,
@@ -2235,6 +2316,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                   (entry) => SizedBox(
                     width: (c.maxWidth - (count - 1) * 13) / count,
                     child: Material(
+                      key: entry.key == 'A' ? walkthroughAlphabetKey : null,
                       color: selectedLetter == entry.key ? soft : surface,
                       borderRadius: BorderRadius.circular(13),
                       child: InkWell(
@@ -2391,10 +2473,31 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         builder: (context, update) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              appVersion.isEmpty ? 'Version …' : 'Version $appVersion',
-              key: const ValueKey('app-version'),
-              style: TextStyle(fontSize: 11, color: muted),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    appVersion.isEmpty ? 'Version …' : 'Version $appVersion',
+                    key: const ValueKey('app-version'),
+                    style: TextStyle(fontSize: 11, color: muted),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Open-source licenses',
+                  onPressed: () => showLicensePage(
+                    context: context,
+                    applicationName: 'morse',
+                    applicationVersion: appVersion,
+                  ),
+                  icon: const Icon(Icons.description_outlined, size: 18),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 32,
+                    height: 32,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
             feedbackRow(Icons.volume_up_outlined, 'Sound', sound, (v) {
@@ -2450,26 +2553,6 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               color: muted,
               height: 1.8,
             ),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                Future<void>.delayed(const Duration(milliseconds: 220), () {
-                  if (mounted) startWalkthrough();
-                });
-              },
-              icon: const Icon(Icons.help_outline, size: 17),
-              label: const Text('Walkthrough'),
-            ),
-            TextButton.icon(
-              onPressed: () => showLicensePage(
-                context: context,
-                applicationName: 'morse',
-                applicationVersion: appVersion,
-              ),
-              icon: const Icon(Icons.description_outlined, size: 17),
-              label: const Text('Open-source licenses'),
-            ),
             if (!DeviceService.supportsVibration) ...[
               const SizedBox(height: 12),
               txt(
@@ -2482,6 +2565,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           ],
         ),
       ),
+      onHelp: (dialogContext) {
+        Navigator.pop(dialogContext);
+        Future<void>.delayed(const Duration(milliseconds: 220), () {
+          if (mounted) startWalkthrough();
+        });
+      },
     );
   }
 
@@ -2490,7 +2579,6 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     stopPlayback();
     setState(() {
       walkthroughStep = 0;
-      page = _walkthroughPages.first;
       walkthroughTargetRect = null;
     });
     WidgetsBinding.instance.addPostFrameCallback(
@@ -2500,13 +2588,15 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
 
   void _updateWalkthroughTarget() {
     if (!mounted || walkthroughStep == null) return;
-    final targetContext = walkthroughTargetKey.currentContext;
+    final targetContext =
+        _walkthroughStops[walkthroughStep!].target.currentContext;
     final overlayContext = scaffold.currentContext;
     if (targetContext == null || overlayContext == null) return;
     final target = targetContext.findRenderObject();
     final overlay = overlayContext.findRenderObject();
-    if (target is! RenderBox || overlay is! RenderBox || !target.hasSize)
+    if (target is! RenderBox || overlay is! RenderBox || !target.hasSize) {
       return;
+    }
     final origin = target.localToGlobal(Offset.zero, ancestor: overlay);
     final rect = origin & target.size;
     if (rect != walkthroughTargetRect) {
@@ -2515,18 +2605,60 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   }
 
   void _moveWalkthrough(int delta) {
+    _walkthroughTapTimer?.cancel();
+    _walkthroughTransitionPending = false;
     final next = (walkthroughStep! + delta).clamp(
       0,
-      _walkthroughPages.length - 1,
+      _walkthroughStops.length - 1,
     );
+    _walkthroughFromTargetRect = walkthroughTargetRect;
+    _walkthroughSpotlightAnimationSerial++;
     setState(() {
       walkthroughStep = next;
-      page = _walkthroughPages[next];
-      walkthroughTargetRect = null;
+      page = _walkthroughStops[next].page;
     });
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _updateWalkthroughTarget(),
     );
+  }
+
+  void _advanceWalkthrough() {
+    final step = walkthroughStep!;
+    if (step == _walkthroughStops.length - 1) {
+      _endWalkthrough();
+      return;
+    }
+    if (_walkthroughStops[step].isTab) {
+      _walkthroughTapTimer?.cancel();
+      setState(() {
+        _walkthroughTransitionPending = true;
+        _walkthroughTapAnimationSerial++;
+      });
+      _walkthroughTapTimer = Timer(const Duration(milliseconds: 320), () {
+        if (!mounted || walkthroughStep != step) return;
+        final next = step + 1;
+        _walkthroughFromTargetRect = walkthroughTargetRect;
+        _walkthroughSpotlightAnimationSerial++;
+        setState(() {
+          page = _walkthroughStops[next].page;
+          walkthroughStep = next;
+          _walkthroughTransitionPending = false;
+        });
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _updateWalkthroughTarget(),
+        );
+      });
+      return;
+    }
+    _moveWalkthrough(1);
+  }
+
+  void _endWalkthrough() {
+    _walkthroughTapTimer?.cancel();
+    setState(() {
+      walkthroughStep = null;
+      _walkthroughTransitionPending = false;
+    });
   }
 
   Widget _walkthroughOverlay() {
@@ -2534,91 +2666,177 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       (_) => _updateWalkthroughTarget(),
     );
     final step = walkthroughStep!;
-    final copy = _walkthroughCopy[step];
+    final stop = _walkthroughStops[step];
     return Positioned.fill(
       child: LayoutBuilder(
-        builder: (context, constraints) => Stack(
-          children: [
-            CustomPaint(
-              size: Size(constraints.maxWidth, constraints.maxHeight),
-              painter: _WalkthroughDimmer(
-                target: walkthroughTargetRect,
-                color: Colors.black.withValues(alpha: .72),
-              ),
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: TextButton(
-                onPressed: () => setState(() => walkthroughStep = null),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: const Color(0xCC202627),
-                ),
-                child: const Text('Skip walkthrough'),
-              ),
-            ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: SafeArea(
-                minimum: const EdgeInsets.fromLTRB(64, 16, 64, 18),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 440),
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: surface,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black38, blurRadius: 20),
-                    ],
+        builder: (context, constraints) {
+          final targetIsLow =
+              walkthroughTargetRect != null &&
+              walkthroughTargetRect!.center.dy > constraints.maxHeight * .58;
+          return Stack(
+            children: [
+              if (walkthroughTargetRect == null)
+                CustomPaint(
+                  key: const ValueKey('walkthrough-dimmer'),
+                  size: Size(constraints.maxWidth, constraints.maxHeight),
+                  painter: _WalkthroughDimmer(
+                    target: null,
+                    color: Colors.black.withValues(alpha: .68),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      txt(
-                        'STEP ${step + 1} OF ${_walkthroughPages.length}',
-                        size: 9,
-                        color: muted,
-                        spacing: 1.2,
+                )
+              else
+                TweenAnimationBuilder<Rect>(
+                  key: ValueKey(_walkthroughSpotlightAnimationSerial),
+                  tween: _SpotlightRectTween(
+                    begin: _walkthroughFromTargetRect ?? walkthroughTargetRect!,
+                    end: walkthroughTargetRect!,
+                  ),
+                  duration: const Duration(milliseconds: 460),
+                  curve: Curves.easeInOutCubic,
+                  builder: (context, spotlightRect, child) => CustomPaint(
+                    key: ValueKey<Rect>(spotlightRect),
+                    size: Size(constraints.maxWidth, constraints.maxHeight),
+                    painter: _WalkthroughDimmer(
+                      target: spotlightRect,
+                      color: Colors.black.withValues(alpha: .68),
+                    ),
+                  ),
+                ),
+              if (_walkthroughTransitionPending &&
+                  walkthroughTargetRect != null)
+                Positioned(
+                  left: walkthroughTargetRect!.center.dx - 31,
+                  top: walkthroughTargetRect!.center.dy - 31,
+                  child: IgnorePointer(
+                    child: TweenAnimationBuilder<double>(
+                      key: ValueKey(_walkthroughTapAnimationSerial),
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 300),
+                      builder: (context, progress, child) => Opacity(
+                        opacity: (1 - progress) * .8,
+                        child: Transform.scale(
+                          scale: .35 + progress * .8,
+                          child: child,
+                        ),
                       ),
-                      const SizedBox(height: 7),
-                      txt(copy.$1, size: 19, weight: FontWeight.w600),
-                      const SizedBox(height: 5),
-                      txt(copy.$2, size: 12, color: muted, height: 1.5),
-                    ],
+                      child: Container(
+                        key: const ValueKey('walkthrough-tab-tap-animation'),
+                        width: 62,
+                        height: 62,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: coral, width: 3),
+                          color: coral.withValues(alpha: .16),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              Positioned(
+                top: 32,
+                right: 12,
+                child: IconButton(
+                  onPressed: _endWalkthrough,
+                  style: IconButton.styleFrom(
+                    foregroundColor: ink,
+                    backgroundColor: surface,
+                    shape: const CircleBorder(),
+                    minimumSize: const Size(48, 48),
+                  ),
+                  tooltip: 'Skip walkthrough',
+                  icon: const Icon(Icons.close, size: 20),
+                ),
+              ),
+              Align(
+                alignment: targetIsLow
+                    ? Alignment.topCenter
+                    : Alignment.bottomCenter,
+                child: SafeArea(
+                  minimum: const EdgeInsets.fromLTRB(74, 16, 74, 18),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    padding: const EdgeInsets.fromLTRB(20, 17, 20, 18),
+                    decoration: BoxDecoration(
+                      color: surface,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black45,
+                          blurRadius: 24,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: soft,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: txt(
+                                '${step + 1} / ${_walkthroughStops.length}',
+                                size: 10,
+                                color: coral,
+                                weight: FontWeight.w700,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: txt(
+                                stop.title,
+                                size: 17,
+                                weight: FontWeight.w600,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        txt(
+                          stop.description,
+                          size: 13,
+                          color: muted,
+                          height: 1.5,
+                          decoration: TextDecoration.none,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              left: 10,
-              top: constraints.maxHeight / 2 - 26,
-              child: _walkthroughArrow(
-                Icons.arrow_back,
-                'Previous step',
-                step > 0,
-                () => _moveWalkthrough(-1),
+              Positioned(
+                left: 12,
+                top: constraints.maxHeight / 2 - 28,
+                child: _walkthroughArrow(
+                  Icons.arrow_back,
+                  'Previous step',
+                  step > 0,
+                  () => _moveWalkthrough(-1),
+                ),
               ),
-            ),
-            Positioned(
-              right: 10,
-              top: constraints.maxHeight / 2 - 26,
-              child: _walkthroughArrow(
-                Icons.arrow_forward,
-                'Next step',
-                true,
-                () {
-                  if (step == _walkthroughPages.length - 1) {
-                    setState(() => walkthroughStep = null);
-                  } else {
-                    _moveWalkthrough(1);
-                  }
-                },
+              Positioned(
+                right: 12,
+                top: constraints.maxHeight / 2 - 28,
+                child: _walkthroughArrow(
+                  Icons.arrow_forward,
+                  'Next step',
+                  !_walkthroughTransitionPending,
+                  _advanceWalkthrough,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -2629,18 +2847,26 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     bool enabled,
     VoidCallback onPressed,
   ) => Material(
-    color: surface,
+    color: enabled ? coral : const Color(0xFF59615E),
     shape: const CircleBorder(),
+    elevation: 5,
     child: IconButton(
       tooltip: label,
       onPressed: enabled ? onPressed : null,
       icon: Icon(icon),
-      color: ink,
-      disabledColor: muted.withValues(alpha: .4),
+      color: Colors.white,
+      disabledColor: Colors.white70,
+      iconSize: 22,
+      constraints: const BoxConstraints.tightFor(width: 56, height: 56),
     ),
   );
 
-  void dialog(String eyebrow, String title, Widget content) {
+  void dialog(
+    String eyebrow,
+    String title,
+    Widget content, {
+    void Function(BuildContext context)? onHelp,
+  }) {
     final context = scaffold.currentContext;
     if (context == null) return;
     setState(() => dialogOpen = true);
@@ -2680,14 +2906,24 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                 const SizedBox(height: 17),
                 content,
                 const SizedBox(height: 23),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: action(
-                    'Got it',
-                    () => Navigator.pop(context),
-                    icon: Icons.check,
-                    primary: true,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (onHelp != null) ...[
+                      TextButton.icon(
+                        onPressed: () => onHelp(context),
+                        icon: const Icon(Icons.help_outline, size: 17),
+                        label: const Text('Help'),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    action(
+                      'Got it',
+                      () => Navigator.pop(context),
+                      icon: Icons.check,
+                      primary: true,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -2700,6 +2936,30 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       scheduleAdvance();
     });
   }
+}
+
+class _WalkthroughStop {
+  const _WalkthroughStop({
+    required this.page,
+    required this.target,
+    this.isTab = false,
+    required this.title,
+    required this.description,
+  });
+
+  final int page;
+  final GlobalKey target;
+  final bool isTab;
+  final String title;
+  final String description;
+}
+
+class _SpotlightRectTween extends Tween<Rect> {
+  _SpotlightRectTween({required Rect begin, required Rect end})
+    : super(begin: begin, end: end);
+
+  @override
+  Rect lerp(double t) => Rect.lerp(begin!, end!, t)!;
 }
 
 class _WalkthroughDimmer extends CustomPainter {
@@ -2717,15 +2977,6 @@ class _WalkthroughDimmer extends CustomPainter {
       path.fillType = PathFillType.evenOdd;
     }
     canvas.drawPath(path, Paint()..color = color);
-    if (target != null) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(target!.inflate(4), const Radius.circular(12)),
-        Paint()
-          ..color = coral
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
-      );
-    }
   }
 
   @override

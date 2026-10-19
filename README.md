@@ -41,7 +41,7 @@ flutter build web --release --no-web-resources-cdn
 ```
 
 The Android application ID is `studio.dit.dit_morse`. Its version and build
-number come from `pubspec.yaml` (currently `1.8.0+35`). Build both Android
+number come from `pubspec.yaml` (currently `1.8.0+43`). Build both Android
 release formats with:
 
 ```sh
@@ -56,6 +56,16 @@ path, relative to `android/app`). Release builds use that key when the file is
 present; without it they use the debug key and are only for local installation.
 Keep the keystore and passwords backed up securely. Store updates need the same
 application ID and upload key, plus a higher build number.
+
+To install a release over an earlier locally built APK signed with Android's
+debug key, use:
+
+```sh
+ORG_GRADLE_PROJECT_localInstall=true flutter build apk --release
+```
+
+This local-install build keeps the same signing key as earlier sideloaded
+builds. Store builds continue to use the upload key.
 
 Additional signal checks:
 

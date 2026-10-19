@@ -8,6 +8,7 @@ plugins {
 
 val signingProperties = Properties()
 val signingPropertiesFile = rootProject.file("key.properties")
+val localInstallBuild = providers.gradleProperty("localInstall").orNull == "true"
 if (signingPropertiesFile.exists()) {
     signingPropertiesFile.inputStream().use(signingProperties::load)
 }
@@ -39,7 +40,10 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (signingPropertiesFile.exists()) {
+            signingConfig = if (localInstallBuild) {
+                // Match earlier sideloaded builds, which used Android's debug key.
+                signingConfigs.getByName("debug")
+            } else if (signingPropertiesFile.exists()) {
                 signingConfigs.create("release") {
                     keyAlias = signingProperties["keyAlias"] as String
                     keyPassword = signingProperties["keyPassword"] as String

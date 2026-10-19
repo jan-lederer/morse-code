@@ -13,12 +13,14 @@ class LearnOverview extends StatefulWidget {
     required this.lessons,
     required this.onPractice,
     required this.dark,
+    this.walkthroughMasteryKey,
   });
   final ProgressHistory history;
   final int examsPassed;
   final List<(String, String, String)> lessons;
   final void Function(PracticeMode mode, String characters) onPractice;
   final bool dark;
+  final GlobalKey? walkthroughMasteryKey;
   @override
   State<LearnOverview> createState() => _LearnOverviewState();
 }
@@ -127,68 +129,72 @@ class _LearnOverviewState extends State<LearnOverview> {
           style: TextStyle(fontSize: 12, color: muted),
         ),
         const SizedBox(height: 18),
-        card(
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Your current level',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: ink,
+        Padding(
+          key: widget.walkthroughMasteryKey,
+          padding: EdgeInsets.zero,
+          child: card(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your current level',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: ink,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'Mistakes move an item back. Stronger items appear less often.',
-                style: TextStyle(fontSize: 11, color: muted),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'Letters & numbers · all practice modes',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: ink,
+                const SizedBox(height: 3),
+                Text(
+                  'Mistakes move an item back. Stronger items appear less often.',
+                  style: TextStyle(fontSize: 11, color: muted),
                 ),
-              ),
-              const SizedBox(height: 8),
-              _masteryBar(
-                morse.keys.toList(),
-                keyName: 'learn-character-mastery',
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Words',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: ink,
+                const SizedBox(height: 14),
+                Text(
+                  'Letters & numbers · all practice modes',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: ink,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 7),
-              _masteryBar(
-                practiceWords,
-                kind: 'word',
-                keyName: 'learn-word-mastery',
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'Sentences',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: ink,
+                const SizedBox(height: 8),
+                _masteryBar(
+                  morse.keys.toList(),
+                  keyName: 'learn-character-mastery',
                 ),
-              ),
-              const SizedBox(height: 7),
-              _masteryBar(
-                practiceSentences,
-                kind: 'sentence',
-                keyName: 'learn-sentence-mastery',
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  'Words',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: ink,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                _masteryBar(
+                  practiceWords,
+                  kind: 'word',
+                  keyName: 'learn-word-mastery',
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Sentences',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: ink,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                _masteryBar(
+                  practiceSentences,
+                  kind: 'sentence',
+                  keyName: 'learn-sentence-mastery',
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 12),

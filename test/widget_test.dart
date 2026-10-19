@@ -73,6 +73,18 @@ void main() {
       await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
       expect(find.text('Your rhythm, your rules.'), findsOneWidget);
+      expect(find.text('SETTINGS'), findsOneWidget);
+      expect(find.text('Help'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Help')).dy,
+        closeTo(tester.getTopLeft(find.text('Got it')).dy, 10),
+      );
+      expect(find.byTooltip('Open-source licenses'), findsOneWidget);
+      expect(find.text('Open-source licenses'), findsNothing);
+      expect(
+        find.text('Little adjustments for a more comfortable practice.'),
+        findsNothing,
+      );
       await tester.tap(find.text('Got it'));
       await tester.pumpAndSettle();
       for (final label in ['Learn', 'Practice', 'Alphabet', 'Morse tree']) {
@@ -86,4 +98,95 @@ void main() {
       }
     },
   );
+  testWidgets('walkthrough spotlights tabs and page features in sequence', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const DitApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Help'));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+    expect(find.text('1 / 9'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('1 / 9')).style!.decoration,
+      TextDecoration.none,
+    );
+    expect(find.text('Learn tab'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('Learn tab')).style!.decoration,
+      TextDecoration.none,
+    );
+    expect(find.text('Learn'), findsWidgets);
+    expect(
+      tester.getTopLeft(find.byTooltip('Skip walkthrough')).dy,
+      greaterThanOrEqualTo(32),
+    );
+    final spotlightFinder = find.byWidgetPredicate(
+      (widget) => widget is CustomPaint && widget.key is ValueKey<Rect>,
+    );
+    final initialSpotlightKey = tester.widget<CustomPaint>(spotlightFinder).key;
+    await tester.tap(find.byTooltip('Next step'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      find.byKey(const ValueKey('walkthrough-tab-tap-animation')),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(milliseconds: 20));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('2 / 9'), findsOneWidget);
+    final movingSpotlightKey = tester.widget<CustomPaint>(spotlightFinder).key;
+    expect(movingSpotlightKey, isNot(initialSpotlightKey));
+    await tester.pumpAndSettle();
+    expect(find.text('Proficiency bars'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('learn-character-mastery')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('Next step'));
+    await tester.pumpAndSettle();
+    expect(find.text('Morse tree tab'), findsOneWidget);
+    await tester.tap(find.byTooltip('Next step'));
+    await tester.pumpAndSettle();
+    expect(find.text('Explore the tree'), findsOneWidget);
+    expect(find.byKey(const ValueKey('whole-morse-tree')), findsOneWidget);
+    await tester.tap(find.byTooltip('Next step'));
+    await tester.pumpAndSettle();
+    expect(find.text('Practice tab'), findsOneWidget);
+    await tester.tap(find.byTooltip('Next step'));
+    await tester.pumpAndSettle();
+    expect(find.text('Practice settings'), findsOneWidget);
+    expect(find.byTooltip('Sending mode'), findsOneWidget);
+    expect(find.byKey(const ValueKey('practice-answer-style')), findsOneWidget);
+    expect(find.byKey(const ValueKey('practice-group')), findsOneWidget);
+    await tester.tap(find.byTooltip('Next step'));
+    await tester.pumpAndSettle();
+    expect(find.text('Practice a signal'), findsOneWidget);
+    expect(find.byKey(const ValueKey('practice-target')), findsOneWidget);
+    await tester.tap(find.byTooltip('Next step'));
+    await tester.pumpAndSettle();
+    expect(find.text('Alphabet tab'), findsOneWidget);
+    await tester.tap(find.byTooltip('Next step'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      find.byKey(const ValueKey('walkthrough-tab-tap-animation')),
+      findsOneWidget,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Look up a character'), findsOneWidget);
+    expect(find.byKey(const ValueKey('alphabet-entry-A')), findsOneWidget);
+    await tester.tap(find.byTooltip('Previous step'));
+    await tester.pumpAndSettle();
+    expect(find.text('Alphabet tab'), findsOneWidget);
+    await tester.tap(find.byTooltip('Skip walkthrough'));
+    await tester.pumpAndSettle();
+    expect(find.text('Look up a character'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

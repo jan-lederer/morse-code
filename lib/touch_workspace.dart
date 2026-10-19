@@ -7,6 +7,7 @@ import 'morse_key.dart';
 /// The tree and key share a bounded viewport, even on short phones or landscape.
 class TouchWorkspace extends StatelessWidget {
   final bool dark, numbers, pressed, holdDash, pending;
+  final GlobalKey? walkthroughTreeKey;
   final String path, message;
   final VoidCallback onNumbers,
       onHelp,
@@ -22,6 +23,7 @@ class TouchWorkspace extends StatelessWidget {
   final PointerCancelEventListener onCancel;
   const TouchWorkspace({
     super.key,
+    this.walkthroughTreeKey,
     required this.dark,
     required this.numbers,
     required this.path,
@@ -74,6 +76,7 @@ class TouchWorkspace extends StatelessWidget {
       builder: (context, c) {
         final landscape = c.maxWidth > c.maxHeight * 1.15;
         final tree = Container(
+          key: walkthroughTreeKey,
           decoration: BoxDecoration(
             color: surface,
             border: Border.all(color: line),

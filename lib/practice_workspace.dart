@@ -6,6 +6,8 @@ import 'practice_controls.dart';
 
 /// Keeps the target, key, feedback, and progress in one bounded viewport.
 class PracticeWorkspace extends StatelessWidget {
+  final GlobalKey? walkthroughKey;
+  final GlobalKey? walkthroughControlsKey;
   final bool dark, pressed, holdDash, playing, hideHint;
   final bool fourChoices;
   final bool examMode;
@@ -26,6 +28,8 @@ class PracticeWorkspace extends StatelessWidget {
   final PointerCancelEventListener onCancel;
   const PracticeWorkspace({
     super.key,
+    this.walkthroughKey,
+    this.walkthroughControlsKey,
     required this.dark,
     required this.pressed,
     required this.holdDash,
@@ -79,7 +83,8 @@ class PracticeWorkspace extends StatelessWidget {
     overflow: TextOverflow.ellipsis,
     style: TextStyle(fontSize: size, color: color ?? ink, fontWeight: weight),
   );
-  Widget panel(Widget child) => Container(
+  Widget panel(Widget child, {Key? key}) => Container(
+    key: key,
     decoration: BoxDecoration(
       color: surface,
       border: Border.all(color: line),
@@ -101,16 +106,19 @@ class PracticeWorkspace extends StatelessWidget {
             return Column(
               key: const ValueKey('practice-workspace'),
               children: [
-                PracticeHeader(
-                  mode: fourChoices
-                      ? PracticeMode.sendChoices
-                      : PracticeMode.send,
-                  group: group,
-                  groups: groups,
-                  onMode: onMode,
-                  onGroup: onGroup,
-                  onNewSession: onNewSession,
-                  exam: examMode,
+                KeyedSubtree(
+                  key: walkthroughControlsKey,
+                  child: PracticeHeader(
+                    mode: fourChoices
+                        ? PracticeMode.sendChoices
+                        : PracticeMode.send,
+                    group: group,
+                    groups: groups,
+                    onMode: onMode,
+                    onGroup: onGroup,
+                    onNewSession: onNewSession,
+                    exam: examMode,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Expanded(
@@ -273,6 +281,7 @@ class PracticeWorkspace extends StatelessWidget {
           ),
       ],
     ),
+    key: walkthroughKey,
   );
 
   Widget controls() => Column(
