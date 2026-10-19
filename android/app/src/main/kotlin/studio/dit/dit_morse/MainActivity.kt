@@ -42,7 +42,7 @@ class MainActivity : FlutterActivity() {
                             result.success(null)
                         }
                         "openPrivacyPolicy" -> {
-                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://jan-lederer.github.io/morse-code/")))
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://celebrated-wisp-4f9339.netlify.app/")))
                             result.success(null)
                         }
                         "tone" -> { setTone(call.arguments == true); result.success(null) }
