@@ -16,7 +16,7 @@
   <script>
     let ditAudio, ditOscillator, ditPatternOscillator, ditPatternToken = 0;
     window.ditLoad = () => {try{return localStorage.getItem('dit-state')}catch{return null}};
-    window.ditOpenPrivacyPolicy = () => window.open('https://celebrated-wisp-4f9339.netlify.app/', '_blank', 'noopener,noreferrer');
+    window.ditOpenPrivacyPolicy = () => window.open('https://jan-lederer.github.io/morse-code/', '_blank', 'noopener,noreferrer');
     window.ditVersion = () => fetch('version.json', {cache:'no-store'}).then(r=>r.json()).then(v=>`${v.version} (${v.build_number})`).catch(()=>'');
     window.ditSave = value => {try{localStorage.setItem('dit-state',value)}catch{}};
     window.ditCanVibrate = () => typeof navigator.vibrate === 'function';
