@@ -8,6 +8,7 @@ import 'morse.dart';
 import 'practice_controls.dart';
 import 'practice_content.dart';
 import 'platform_service.dart';
+import 'app_palette.dart';
 import 'app_strings.dart';
 
 class RecognitionWorkspace extends StatefulWidget {
@@ -77,7 +78,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
   final _wrongChoices = <String>{};
   int _playback = 0, _signalIndex = -1, _attempts = 0, _successes = 0;
   String _feedback = '';
-  static const _accent = Color(0xFFE77860);
+  Color get accentColor => morseAccentFor(widget.dark);
   bool get _phrases => _group == '@words' || _group == '@sentences';
   List<String> get _questionPool => _group == '@words'
       ? practiceWords
@@ -310,10 +311,10 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
   }
 
   Color get _muted =>
-      widget.dark ? const Color(0xFF9AA4A0) : const Color(0xFF747E77);
-  Color get _surface => widget.dark ? const Color(0xFF202627) : Colors.white;
+      widget.dark ? const Color(0xFFB6C3D4) : const Color(0xFF56657B);
+  Color get _surface => widget.dark ? const Color(0xFF131D2D) : Colors.white;
   Color get _line =>
-      widget.dark ? const Color(0xFF353D3B) : const Color(0xFFE4E7DC);
+      widget.dark ? const Color(0xFF35465C) : const Color(0xFFDDE5EF);
 
   Widget _challenge() => Container(
     key: const ValueKey('recognition-signal'),
@@ -354,7 +355,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                     overflow: TextOverflow.visible,
                     style: TextStyle(
                       fontSize: _phrases ? 24 : 56,
-                      color: _accent,
+                      color: accentColor,
                     ),
                   ),
           ),
@@ -366,7 +367,7 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _signalIndex < 0 ? _line : _accent,
+              color: _signalIndex < 0 ? _line : accentColor,
             ),
           ),
         PracticeSignalActions(
@@ -449,12 +450,10 @@ class _RecognitionWorkspaceState extends State<RecognitionWorkspace>
                               ? null
                               : () => _submit(_choices[row * 2 + col]),
                           style: OutlinedButton.styleFrom(
-                            backgroundColor: widget.dark
-                                ? const Color(0xFF322B28)
-                                : const Color(0xFFFFF1EB),
-                            foregroundColor: _accent,
+                            backgroundColor: morseAccentSoftFor(widget.dark),
+                            foregroundColor: accentColor,
                             side: BorderSide(
-                              color: _accent.withValues(alpha: .5),
+                              color: accentColor.withValues(alpha: .5),
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),

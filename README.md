@@ -14,6 +14,10 @@ sending practice.
 | --- | --- |
 | <img src="screenshots/learn-dark.png" alt="Learn progress overview in dark mode" width="300"> | <img src="screenshots/listening-choices-dark.png" alt="Listening practice with four answer choices in dark mode" width="300"> |
 
+### Settings · dark
+
+<img src="screenshots/settings-dark.png" alt="Shared settings sheet in dark mode with color mode and app identity cards" width="300">
+
 ## Learn and practise
 
 - Explore the complete Morse tree and practise dots, dashes, and letter entry.
@@ -23,7 +27,8 @@ sending practice.
   Listening presents the whole phrase.
 - Take the 20-question Exam. It covers all four practice variants; three
   mistakes end the exam.
-- Track practice progress, adjust sound and vibration, and switch themes.
+- Track practice progress, adjust sound and vibration, and choose a theme in
+  Settings.
 
 On phones and tablets, the tree and touch key fit the screen in portrait and
 landscape. Settings and progress stay on the device. Android works offline;
@@ -40,9 +45,9 @@ flutter build apk --release
 flutter build web --release --no-web-resources-cdn
 ```
 
-The Android application ID is `com.morse_code`. Its version and build
-number come from `pubspec.yaml` (currently `1.8.0+51`). Build both Android
-release formats with:
+The Android application ID is `com.morse_code`. Its version name comes from
+`pubspec.yaml` (currently `1.8.1`); Android versionCode is `59`. Build both
+Android release formats with:
 
 ```sh
 flutter build apk --release
@@ -80,7 +85,7 @@ preview.
 
 ## App icon
 
-The coral dot-and-dash icon is generated from
+The amber dot-and-dash icon is generated from
 [`assets/branding/app-icon.svg`](assets/branding/app-icon.svg). Android includes
 legacy, adaptive, and themed icons; the web app includes standard and maskable
 icons plus a favicon.
@@ -89,3 +94,12 @@ Regenerate icon assets with `python3 tools/generate_icons.py`. Check generated
 assets and resource references with `python3 tools/generate_icons.py --check`.
 
 There is no deployment target saved for this project.
+
+## Shared template icons
+
+The common toolbar and Settings icons use `TemplateIcons` from
+`lib/template_icons.dart`, mapped to the same built-in Material glyphs used by
+Template. A small licensed Material Icons subset is also retained at
+`assets/icons/template-material-icons.ttf` for derived app surfaces. It permits
+commercial use under CC BY 4.0; the license and attribution are in
+`assets/icons/MaterialIcons_LICENSE.txt` and `THIRD_PARTY_NOTICES.md`.

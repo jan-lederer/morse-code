@@ -53,8 +53,8 @@ class MasteryDistributionBar extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: dark
-                      ? const Color(0xFF353D3B)
-                      : const Color(0xFFE4E7DC),
+                      ? const Color(0xFF35465C)
+                      : const Color(0xFFDDE5EF),
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: Row(
@@ -81,7 +81,7 @@ class MasteryDistributionBar extends StatelessWidget {
                   fontSize: 9,
                   color: dark
                       ? const Color(0xFFB8C0BC)
-                      : const Color(0xFF747E77),
+                      : const Color(0xFF56657B),
                 ),
               ),
             ],

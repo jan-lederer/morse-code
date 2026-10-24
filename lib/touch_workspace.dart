@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'morse.dart';
 import 'morse_tree.dart';
 import 'morse_key.dart';
+import 'app_palette.dart';
 import 'app_strings.dart';
 
 /// The tree and key share a bounded viewport, even on short phones or landscape.
@@ -46,12 +47,12 @@ class TouchWorkspace extends StatelessWidget {
     required this.onClear,
   });
 
-  static const accent = Color(0xFFE77860);
-  Color get ink => dark ? const Color(0xFFF0F1EC) : const Color(0xFF26302F);
-  Color get muted => dark ? const Color(0xFF9AA4A0) : const Color(0xFF747E77);
-  Color get line => dark ? const Color(0xFF353D3B) : const Color(0xFFE4E7DC);
-  Color get surface => dark ? const Color(0xFF202627) : Colors.white;
-  Color get soft => dark ? const Color(0xFF322B28) : const Color(0xFFFFF1EB);
+  Color get accent => morseAccentFor(dark);
+  Color get ink => dark ? const Color(0xFFF1F5FA) : const Color(0xFF172235);
+  Color get muted => dark ? const Color(0xFFB6C3D4) : const Color(0xFF56657B);
+  Color get line => dark ? const Color(0xFF35465C) : const Color(0xFFDDE5EF);
+  Color get surface => dark ? const Color(0xFF131D2D) : Colors.white;
+  Color get soft => morseAccentSoftFor(dark);
   Text label(
     String text, {
     double size = 12,

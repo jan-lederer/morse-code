@@ -1,6 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dit_morse/main.dart';
+import 'package:dit_morse/template_icons.dart';
 import 'package:dit_morse/morse.dart';
 
 void main() {
@@ -17,9 +24,10 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.runAsync(() => _loadSdkFonts(tester));
     await tester.pumpWidget(const DitApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Settings'));
+    await tester.tap(find.byTooltip('Open settings'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('language-selector')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('language-selector')));
@@ -27,10 +35,10 @@ void main() {
     await tester.tap(find.text('DE').last);
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull, reason: 'after selecting German');
-    expect(find.text('EINSTELLUNGEN'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Sprache'), findsOneWidget);
-    expect(find.text('Dein Rhythmus, deine Regeln.'), findsOneWidget);
-    await tester.tap(find.text('Verstanden'));
+    expect(find.text('Tune the look and feel of your app.'), findsOneWidget);
+    await tester.tap(find.byIcon(TemplateIcons.close));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull, reason: 'after closing settings');
     expect(find.text('Learn'), findsOneWidget);
@@ -89,27 +97,64 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   testWidgets(
-    'phone layouts, dark theme, navigation and settings stay usable',
+    'phone layouts, settings theme choice and navigation stay usable',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(const DitApp());
+      await tester.runAsync(() => _loadSdkFonts(tester));
+      final screenshotKey = GlobalKey();
+      await tester.pumpWidget(
+        RepaintBoundary(key: screenshotKey, child: const DitApp()),
+      );
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('whole-morse-tree')), findsOneWidget);
-      await tester.tap(find.byTooltip('Switch to dark mode'));
-      await tester.pumpAndSettle();
-      expect(find.byTooltip('Switch to light mode'), findsOneWidget);
-      await tester.tap(find.byTooltip('Settings'));
-      await tester.pumpAndSettle();
-      expect(find.text('Your rhythm, your rules.'), findsOneWidget);
-      expect(find.text('SETTINGS'), findsOneWidget);
-      expect(find.text('Help'), findsOneWidget);
-      expect(
-        tester.getTopLeft(find.text('Help')).dy,
-        closeTo(tester.getTopLeft(find.text('Got it')).dy, 10),
+      final settingsButton = find.ancestor(
+        of: find.byTooltip('Open settings'),
+        matching: find.byType(IconButton),
       );
+      expect(tester.getRect(settingsButton).right, closeTo(370, 1));
+
+      Future<void> captureDark(String filename) async {
+        final boundary = tester.renderObject<RenderRepaintBoundary>(
+          find.byKey(screenshotKey),
+        );
+        await tester.runAsync(() async {
+          final image = await boundary.toImage(pixelRatio: 1);
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          final output = File('screenshots/$filename');
+          await output.parent.create(recursive: true);
+          await output.writeAsBytes(bytes!.buffer.asUint8List());
+          image.dispose();
+          expect(await output.length(), greaterThan(10000));
+        });
+      }
+
+      expect(find.byTooltip('Switch to dark theme'), findsNothing);
+      await tester.tap(find.byTooltip('Open settings'));
+      await tester.pumpAndSettle();
+      final colorModeSelector = find.byKey(
+        const ValueKey('color-mode-selector'),
+      );
+      expect(
+        tester.widget<SegmentedButton<ThemeMode>>(colorModeSelector).selected,
+        {ThemeMode.system},
+      );
+      await tester.tap(find.byIcon(TemplateIcons.darkAppearance));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<SegmentedButton<ThemeMode>>(colorModeSelector).selected,
+        {ThemeMode.dark},
+      );
+      await tester.tap(find.byIcon(TemplateIcons.close));
+      await tester.pumpAndSettle();
+      await captureDark('morse-tree-dark.png');
+      await tester.tap(find.byTooltip('Open settings'));
+      await tester.pumpAndSettle();
+      expect(find.text('Tune the look and feel of your app.'), findsOneWidget);
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Help'), findsOneWidget);
       expect(find.byTooltip('Open-source licenses'), findsOneWidget);
       expect(find.byKey(const ValueKey('privacy-policy-link')), findsOneWidget);
       expect(find.text('Open-source licenses'), findsNothing);
@@ -117,17 +162,41 @@ void main() {
         find.text('Little adjustments for a more comfortable practice.'),
         findsNothing,
       );
-      await tester.tap(find.text('Got it'));
+      await captureDark('settings-dark.png');
+      await tester.tap(find.byIcon(TemplateIcons.close));
       await tester.pumpAndSettle();
       for (final label in ['Learn', 'Practice', 'Alphabet', 'Morse tree']) {
         await tester.tap(find.text(label).last);
         await tester.pumpAndSettle();
+        if (label == 'Learn') {
+          expect(find.text('MORSE'), findsOneWidget);
+          expect(find.text('FUTURE-READY LEARNING KIT'), findsNothing);
+          await captureDark('learn-dark.png');
+        }
+        if (label == 'Practice') await captureDark('practice-dark.png');
         expect(
           tester.takeException(),
           isNull,
           reason: '$label should fit phone',
         );
       }
+      await tester.tap(find.text('Practice').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('practice-direction-listen')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('practice-answer-style')),
+          matching: find.text('4'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await captureDark('listening-choices-dark.png');
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'listening choices fit phone',
+      );
     },
   );
   testWidgets('walkthrough spotlights tabs and page features in sequence', (
@@ -139,7 +208,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const DitApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Settings'));
+    await tester.tap(find.byTooltip('Open settings'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Help'));
     await tester.pump(const Duration(milliseconds: 250));
@@ -221,4 +290,35 @@ void main() {
     expect(find.text('Look up a character'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+}
+
+Future<void> _loadSdkFonts(WidgetTester tester) async {
+  final packages = jsonDecode(
+    File('.dart_tool/package_config.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
+  final entries = packages['packages'] as List<dynamic>;
+  final flutterPackage = entries.firstWhere((p) => p['name'] == 'flutter');
+  final sdk = Directory.fromUri(Uri.parse(flutterPackage['rootUri'] as String))
+      .parent
+      .parent
+      .path;
+  final root = '$sdk/bin/cache/artifacts/material_fonts';
+  final roboto = FontLoader('Roboto')
+    ..addFont(
+      Future.value(
+        ByteData.sublistView(
+          await File('$root/Roboto-Regular.ttf').readAsBytes(),
+        ),
+      ),
+    );
+  await roboto.load();
+  final icons = FontLoader('MaterialIcons')
+    ..addFont(
+      Future.value(
+        ByteData.sublistView(
+          await File('$root/MaterialIcons-Regular.otf').readAsBytes(),
+        ),
+      ),
+    );
+  await icons.load();
 }

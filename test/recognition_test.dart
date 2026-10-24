@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:dit_morse/app_palette.dart';
 import 'package:dit_morse/main.dart';
+import 'package:dit_morse/template_icons.dart';
 import 'package:dit_morse/morse.dart';
 import 'package:dit_morse/recognition_workspace.dart';
 import 'package:dit_morse/practice_content.dart';
@@ -79,7 +81,7 @@ void main() {
         theme: ThemeData(
           useMaterial3: true,
           brightness: dark ? Brightness.dark : Brightness.light,
-          colorSchemeSeed: coral,
+          colorSchemeSeed: morseOrangeLight,
           fontFamily: 'Roboto',
         ),
         home: Scaffold(
@@ -374,11 +376,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 149));
     expect(light(), off);
     await tester.pump(const Duration(milliseconds: 1));
-    expect(light(), coral);
+    expect(light(), morseOrangeLight);
     await tester.pump(const Duration(milliseconds: 100));
     expect(light(), off);
     await tester.pump(const Duration(milliseconds: 100));
-    expect(light(), coral);
+    expect(light(), morseOrangeLight);
     await tester.pump(const Duration(milliseconds: 300));
     expect(light(), off);
     await tester.pump(const Duration(milliseconds: 100));
@@ -523,13 +525,14 @@ void main() {
       final data = jsonDecode(saved!) as Map<String, dynamic>;
       expect(data['correct'], 1);
       expect(data['learned'], contains(target));
-      await tap(tester, find.byTooltip('Settings'));
+      await tap(tester, find.byTooltip('Open settings'));
       await tester.pumpAndSettle();
-      expect(find.text('Version 1.0.0 (10)'), findsOneWidget);
+      expect(find.text('Version'), findsOneWidget);
+      expect(find.text('1.0.0 (10)'), findsOneWidget);
       final before = question(tester);
       await tester.pump(const Duration(seconds: 2));
       expect(question(tester), before);
-      await tap(tester, find.text('Got it'));
+      await tap(tester, find.byIcon(TemplateIcons.close));
       await tester.pumpAndSettle();
       await mode(tester, 'Send signals');
       expect(find.byKey(const ValueKey('touch-morse-key')), findsOneWidget);

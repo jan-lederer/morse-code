@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'morse.dart';
 import 'morse_key.dart';
 import 'practice_controls.dart';
+import 'app_palette.dart';
 import 'app_strings.dart';
 
 /// Keeps the target, key, feedback, and progress in one bounded viewport.
@@ -66,11 +67,12 @@ class PracticeWorkspace extends StatelessWidget {
     this.onNewSession,
   });
   static void _ignoreChoice(String _) {}
-  static const accent = Color(0xFFE77860), green = Color(0xFF648D78);
-  Color get ink => dark ? const Color(0xFFF0F1EC) : const Color(0xFF26302F);
-  Color get muted => dark ? const Color(0xFF9AA4A0) : const Color(0xFF747E77);
-  Color get line => dark ? const Color(0xFF353D3B) : const Color(0xFFE4E7DC);
-  Color get surface => dark ? const Color(0xFF202627) : Colors.white;
+  static const green = Color(0xFF648D78);
+  Color get accent => morseAccentFor(dark);
+  Color get ink => dark ? const Color(0xFFF1F5FA) : const Color(0xFF172235);
+  Color get muted => dark ? const Color(0xFFB6C3D4) : const Color(0xFF56657B);
+  Color get line => dark ? const Color(0xFF35465C) : const Color(0xFFDDE5EF);
+  Color get surface => dark ? const Color(0xFF131D2D) : Colors.white;
   Text label(
     String text, {
     double size = 12,
@@ -373,9 +375,7 @@ class PracticeWorkspace extends StatelessWidget {
                 key: ValueKey('send-choice-$code'),
                 onPressed: _locked ? null : () => onChoice(code),
                 style: OutlinedButton.styleFrom(
-                  backgroundColor: dark
-                      ? const Color(0xFF322B28)
-                      : const Color(0xFFFFF1EB),
+                  backgroundColor: morseAccentSoftFor(dark),
                   foregroundColor: accent,
                   side: BorderSide(color: accent.withValues(alpha: .5)),
                   shape: RoundedRectangleBorder(

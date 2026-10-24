@@ -3,6 +3,7 @@
 .pub/
 build/
 artifacts/
+*.apk
 .idea/
 *.iml
 android/local.properties

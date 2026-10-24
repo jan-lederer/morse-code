@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:dit_morse/app_palette.dart';
 import 'package:dit_morse/main.dart';
 import 'package:dit_morse/morse.dart';
+import 'package:dit_morse/template_icons.dart';
 
 void main() {
   const capture = bool.fromEnvironment('CAPTURE_TREE_PREVIEWS');
@@ -58,6 +60,22 @@ void main() {
     expect(tester.takeException(), isNull);
   }
 
+  Future<void> chooseDarkAppearance(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('Open settings'));
+    await tester.pump(const Duration(milliseconds: 400));
+    final selector = find.byKey(const ValueKey('color-mode-selector'));
+    await tester.ensureVisible(selector);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byIcon(TemplateIcons.darkAppearance));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      tester.widget<SegmentedButton<ThemeMode>>(selector).selected,
+      {ThemeMode.dark},
+    );
+    await tester.tap(find.byTooltip('Close settings'));
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
   for (final size in [
     const Size(320, 568),
     const Size(390, 844),
@@ -91,7 +109,7 @@ void main() {
                       .decoration
                   as BoxDecoration)
               .color,
-          coral,
+          morseOrangeLight,
         );
         await dot.up();
         await tester.pump(const Duration(milliseconds: 100));
@@ -112,7 +130,7 @@ void main() {
                       .decoration
                   as BoxDecoration)
               .color,
-          coral,
+          morseOrangeLight,
         );
         if (capture && size.width == 390) {
           await tester.pump(const Duration(milliseconds: 150));
@@ -139,8 +157,7 @@ void main() {
         await tester.tap(find.byTooltip('Show numbers'));
         await tester.pumpAndSettle();
         expectVisible(tester, true);
-        await tester.tap(find.byTooltip('Switch to dark mode'));
-        await tester.pumpAndSettle();
+        await chooseDarkAppearance(tester);
         final held = await tester.startGesture(
           tester.getCenter(find.byKey(const ValueKey('touch-morse-key'))),
         );

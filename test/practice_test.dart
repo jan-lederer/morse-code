@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dit_morse/main.dart';
+import 'package:dit_morse/template_icons.dart';
 import 'package:dit_morse/morse.dart';
 import 'package:dit_morse/practice_content.dart';
 
@@ -43,6 +44,22 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Practice').last);
     await tester.pumpAndSettle();
+  }
+
+  Future<void> chooseDarkAppearance(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('Open settings'));
+    await tester.pump(const Duration(milliseconds: 400));
+    final selector = find.byKey(const ValueKey('color-mode-selector'));
+    await tester.ensureVisible(selector);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byIcon(TemplateIcons.darkAppearance));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      tester.widget<SegmentedButton<ThemeMode>>(selector).selected,
+      {ThemeMode.dark},
+    );
+    await tester.tap(find.byTooltip('Close settings'));
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
   String target(WidgetTester tester) =>
@@ -151,8 +168,7 @@ void main() {
       await gesture.cancel();
       await tester.pumpAndSettle();
       if (size.width == 390) await preview(tester, 'practice-phone');
-      await tester.tap(find.byTooltip('Switch to dark mode'));
-      await tester.pumpAndSettle();
+      await chooseDarkAppearance(tester);
       allVisible(tester);
       if (size.width == 390) await preview(tester, 'practice-phone-dark');
       await tester.pumpWidget(const SizedBox.shrink());
@@ -348,11 +364,11 @@ void main() {
   ) async {
     await openPractice(tester);
     await send(tester, '.');
-    await tester.tap(find.byTooltip('Settings'));
+    await tester.tap(find.byTooltip('Open settings'));
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 1));
     expect(target(tester), 'E');
-    await tester.tap(find.text('Got it'));
+    await tester.tap(find.byIcon(TemplateIcons.close));
     await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 650));
     expect(target(tester), isNot('E'));

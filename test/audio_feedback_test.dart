@@ -204,7 +204,7 @@ void main() {
           case 'dispose':
             await tester.pumpWidget(const SizedBox.shrink());
           case 'mute':
-            await tester.tap(find.byTooltip('Settings'));
+      await tester.tap(find.byTooltip('Open settings'));
             await tester.pump();
             await tester.tap(find.byType(Switch).first);
         }

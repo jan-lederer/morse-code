@@ -17,10 +17,10 @@ import 'practice_controls.dart';
 import 'practice_content.dart';
 import 'progress_history.dart';
 import 'learn_overview.dart';
+import 'app_palette.dart';
 import 'app_strings.dart';
+import 'template_icons.dart';
 
-const coral = Color(0xFFE77860);
-const green = Color(0xFF648D78);
 
 enum _ExamChoice { resume, startNew }
 
@@ -105,8 +105,13 @@ class DitApp extends StatefulWidget {
 }
 
 class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
-  bool dark = false,
-      sound = true,
+  ThemeMode _themeMode = ThemeMode.system;
+  bool get dark =>
+      _themeMode == ThemeMode.dark ||
+      (_themeMode == ThemeMode.system &&
+          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+              Brightness.dark);
+  bool sound = true,
       vibration = false,
       numbers = false,
       pressed = false,
@@ -232,12 +237,14 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   final messenger = GlobalKey<ScaffoldMessengerState>();
   final scaffold = GlobalKey<ScaffoldState>();
   final focus = FocusNode();
-  Color get bg => dark ? const Color(0xFF171C1D) : const Color(0xFFF6F5F1);
-  Color get surface => dark ? const Color(0xFF202627) : Colors.white;
-  Color get ink => dark ? const Color(0xFFF0F1EC) : const Color(0xFF26302F);
-  Color get muted => dark ? const Color(0xFF9AA4A0) : const Color(0xFF8A918B);
-  Color get line => dark ? const Color(0xFF353D3B) : const Color(0xFFEBEBE4);
-  Color get soft => dark ? const Color(0xFF322B28) : const Color(0xFFFFF1EB);
+  Color get bg => dark ? const Color(0xFF090E19) : const Color(0xFFF3F6FA);
+  Color get surface => dark ? const Color(0xFF131D2D) : Colors.white;
+  Color get ink => dark ? const Color(0xFFF1F5FA) : const Color(0xFF172235);
+  Color get muted => dark ? const Color(0xFFB6C3D4) : const Color(0xFF56657B);
+  Color get line => dark ? const Color(0xFF35465C) : const Color(0xFFDDE5EF);
+  Color get appAccent => morseAccentFor(dark);
+  Color get appAccentForeground => morseAccentForegroundFor(dark);
+  Color get soft => morseAccentSoftFor(dark);
   int get threshold => [320, 230, 170][pace];
   int get gap => [1400, 1000, 700][pace];
   @override
@@ -257,8 +264,17 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     if (!mounted || raw == null) return;
     try {
       final data = jsonDecode(raw) as Map<String, dynamic>;
+      final loadedThemeMode = switch (data['themeMode']) {
+        'system' => ThemeMode.system,
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ =>
+          data.containsKey('dark')
+              ? (data['dark'] == true ? ThemeMode.dark : ThemeMode.light)
+              : ThemeMode.system,
+      };
       setState(() {
-        dark = data['dark'] == true;
+        _themeMode = loadedThemeMode;
         sound = data['sound'] != false;
         vibration = data['vibration'] == true;
         hideHint = data['hideHint'] == true;
@@ -304,6 +320,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     DeviceService.save(
       jsonEncode({
         'dark': dark,
+        'themeMode': _themeMode.name,
         'language': appLanguage,
         'sound': sound,
         'vibration': vibration,
@@ -331,6 +348,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     focus.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    super.didChangePlatformBrightness();
+    if (_themeMode == ThemeMode.system && mounted) setState(() {});
   }
 
   @override
@@ -725,7 +748,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     decoration: BoxDecoration(
       color: color ?? surface,
       border: Border.all(color: line),
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
     ),
     padding: padding,
     child: child,
@@ -739,7 +762,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     child: txt(
       text,
       size: 9,
-      color: accent ? coral : muted,
+      color: accent ? appAccent : muted,
       weight: FontWeight.w700,
       spacing: 1,
     ),
@@ -755,33 +778,30 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     VoidCallback onTap, {
     IconData? icon,
     bool primary = false,
-    bool compact = false,
-    double compactPadding = 2,
   }) => FilledButton.icon(
     onPressed: onTap,
-    icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 17),
+    icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 18),
     label: Text(tr(text)),
     style: FilledButton.styleFrom(
-      backgroundColor: primary ? coral : (dark ? line : bg),
-      foregroundColor: primary ? Colors.white : ink,
+      backgroundColor: primary ? appAccent : surface,
+      foregroundColor: primary ? appAccentForeground : appAccent,
+      minimumSize: const Size(48, 48),
+      side: primary ? BorderSide.none : BorderSide(color: line),
       elevation: 0,
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? compactPadding : 19,
-        vertical: 17,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
-      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
     ),
   );
-  Widget logo({bool light = false, double size = 34}) => Row(
+  Widget logo({bool light = false, double size = 23}) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        width: 35,
-        height: 35,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
-          color: coral,
-          borderRadius: BorderRadius.circular(10),
+          color: appAccent,
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Center(
           child: Row(
@@ -790,8 +810,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               Container(
                 width: 6,
                 height: 6,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: appAccentForeground,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -800,7 +820,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                 width: 13,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: appAccentForeground,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -815,31 +835,112 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           style: TextStyle(
             fontSize: size,
             fontWeight: FontWeight.w800,
-            letterSpacing: -2,
+            letterSpacing: -1.1,
             color: light ? Colors.white : ink,
           ),
-          children: const [
+          children: [
             TextSpan(
               text: '.',
-              style: TextStyle(color: coral),
+              style: TextStyle(color: appAccent),
             ),
           ],
         ),
       ),
     ],
   );
+  ThemeData _themeFor(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: morseAccentFor(isDark),
+          brightness: brightness,
+        ).copyWith(
+          surface: isDark ? const Color(0xFF131D2D) : Colors.white,
+          onSurface: isDark ? const Color(0xFFF1F5FA) : const Color(0xFF172235),
+          onSurfaceVariant: isDark
+              ? const Color(0xFFB6C3D4)
+              : const Color(0xFF56657B),
+          outline: isDark ? const Color(0xFF35465C) : const Color(0xFFDDE5EF),
+          outlineVariant: isDark
+              ? const Color(0xFF35465C)
+              : const Color(0xFFDDE5EF),
+        );
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      fontFamily: 'Roboto',
+      colorScheme: scheme,
+      scaffoldBackgroundColor: isDark
+          ? const Color(0xFF090E19)
+          : const Color(0xFFF3F6FA),
+      dividerTheme: DividerThemeData(color: scheme.outlineVariant),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: scheme.surface,
+        indicatorColor: scheme.primary.withValues(alpha: isDark ? .22 : .14),
+        height: 72,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surface,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: false,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+      iconTheme: IconThemeData(color: scheme.onSurfaceVariant),
+      cardTheme: CardThemeData(
+        color: scheme.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: scheme.outlineVariant),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = ThemeData(
-      useMaterial3: true,
-      brightness: dark ? Brightness.dark : Brightness.light,
-      scaffoldBackgroundColor: bg,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: coral,
-        brightness: dark ? Brightness.dark : Brightness.light,
-      ),
-      fontFamily: 'Roboto',
-    );
     return MaterialApp(
       title: 'morse',
       debugShowCheckedModeBanner: false,
@@ -851,7 +952,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
         Locale('es'),
       ],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      theme: theme,
+      theme: _themeFor(Brightness.light),
+      darkTheme: _themeFor(Brightness.dark),
+      themeMode: _themeMode,
       scaffoldMessengerKey: messenger,
       home: LayoutBuilder(
         builder: (context, constraints) {
@@ -970,156 +1073,148 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     );
   }
 
-  Widget sidebar() => Container(
-    width: 230,
-    color: const Color(0xFF252F2E),
-    padding: const EdgeInsets.fromLTRB(22, 32, 22, 22),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        logo(light: true, size: 24),
-        const SizedBox(height: 10),
-        txt(
-          'A LITTLE SIGNAL GOES A LONG WAY',
-          size: 7,
-          color: const Color(0xFF9CA7A0),
-          spacing: 1.4,
-        ),
-        const SizedBox(height: 55),
-        txt(
-          'YOUR WORKSPACE',
-          size: 9,
-          color: const Color(0xFF89958F),
-          weight: FontWeight.w600,
-          spacing: 1.6,
-        ),
-        const SizedBox(height: 16),
-        ...List.generate(
-          4,
-          (i) => Padding(
-            key: walkthroughTabKeys[i],
-            padding: const EdgeInsets.only(bottom: 7),
-            child: Material(
-              color: page == i ? const Color(0xFF3B4541) : Colors.transparent,
-              borderRadius: BorderRadius.circular(9),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(9),
-                onTap: () => switchPage(i),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 15,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        [
-                          Icons.menu_book_outlined,
-                          Icons.account_tree_outlined,
-                          Icons.bolt_outlined,
-                          Icons.grid_view_rounded,
-                        ][i],
-                        size: 19,
-                        color: page == i
-                            ? const Color(0xFFF1C5AC)
-                            : const Color(0xFF9AA6A0),
+  Widget sidebar() {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 230,
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(right: BorderSide(color: line)),
+      ),
+      padding: const EdgeInsets.fromLTRB(22, 32, 22, 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          logo(size: 23),
+          const SizedBox(height: 10),
+          txt(
+            'A LITTLE SIGNAL GOES A LONG WAY',
+            size: 7,
+            color: muted,
+            spacing: 1.4,
+          ),
+          const SizedBox(height: 55),
+          txt(
+            'YOUR WORKSPACE',
+            size: 9,
+            color: muted,
+            weight: FontWeight.w600,
+            spacing: 1.6,
+          ),
+          const SizedBox(height: 16),
+          ...List.generate(
+            4,
+            (i) => Padding(
+              key: walkthroughTabKeys[i],
+              padding: const EdgeInsets.only(bottom: 7),
+              child: Material(
+                color: page == i ? soft : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => switchPage(i),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            [
+                              Icons.menu_book_outlined,
+                              Icons.account_tree_outlined,
+                              Icons.bolt_outlined,
+                              Icons.grid_view_rounded,
+                            ][i],
+                            size: 20,
+                            color: page == i ? appAccent : muted,
+                          ),
+                          const SizedBox(width: 13),
+                          Expanded(
+                            child: txt(
+                              ['Learn', 'Morse tree', 'Practice', 'Alphabet'][i],
+                              size: 13,
+                              color: page == i ? appAccent : ink,
+                              weight: page == i
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                          if (page == i)
+                            Icon(Icons.circle, size: 5, color: appAccent),
+                        ],
                       ),
-                      const SizedBox(width: 13),
-                      Expanded(
-                        child: txt(
-                          ['Learn', 'Morse tree', 'Practice', 'Alphabet'][i],
-                          size: 13,
-                          color: page == i
-                              ? Colors.white
-                              : const Color(0xFFA5AFA9),
-                          weight: page == i ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                      ),
-                      if (page == i)
-                        const Icon(Icons.circle, size: 5, color: coral),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-        const Spacer(),
-        Container(
-          padding: const EdgeInsets.all(17),
-          decoration: BoxDecoration(
-            color: const Color(0xFF303B37),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF414D43)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              txt(
-                '· − ·',
-                size: 30,
-                color: const Color(0xFFD4B78C),
-                spacing: 4,
-              ),
-              const SizedBox(height: 9),
-              txt(
-                'A little, every day.',
-                size: 14,
-                color: const Color(0xFFF0EEE6),
-                weight: FontWeight.w600,
-              ),
-              const SizedBox(height: 8),
-              txt(
-                'Great things start with\nthe smallest signals.',
-                size: 11,
-                color: const Color(0xFFA3AEA3),
-                height: 1.7,
-              ),
-              const SizedBox(height: 14),
-              InkWell(
-                onTap: () => switchPage(2),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: txt(
-                        'Keep the rhythm',
-                        size: 10,
-                        color: const Color(0xFFDCBEA0),
-                        weight: FontWeight.w600,
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(17),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                txt('· − ·', size: 30, color: appAccent, spacing: 4),
+                const SizedBox(height: 9),
+                txt(
+                  'A little, every day.',
+                  size: 14,
+                  color: ink,
+                  weight: FontWeight.w700,
+                ),
+                const SizedBox(height: 8),
+                txt(
+                  'Great things start with\nthe smallest signals.',
+                  size: 11,
+                  color: muted,
+                  height: 1.7,
+                ),
+                const SizedBox(height: 14),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => switchPage(2),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: txt(
+                              'Keep the rhythm',
+                              size: 12,
+                              color: appAccent,
+                              weight: FontWeight.w700,
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward, size: 18, color: appAccent),
+                        ],
                       ),
                     ),
-                    const Icon(
-                      Icons.arrow_forward,
-                      size: 15,
-                      color: Color(0xFFDCBEA0),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 24),
-        TextButton.icon(
-          onPressed: () => settingsDialog(),
-          icon: const Icon(Icons.tune, size: 18, color: Color(0xFFA3AEA3)),
-          label: txt('Settings', size: 12, color: const Color(0xFFA3AEA3)),
-        ),
-        const SizedBox(height: 18),
-        txt(
-          '●  Your own pace. Your own signal.',
-          size: 8,
-          color: const Color(0xFF7D8B82),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 18),
+          txt(
+            '●  Your own pace. Your own signal.',
+            size: 8,
+            color: muted,
+          ),
+        ],
+      ),
+    );
+  }
   Widget topbar(bool wide, {bool compact = false}) => Container(
-    height: compact
-        ? 48
-        : wide
-        ? 76
-        : 65,
+    height: compact ? 52 : 68,
     padding: EdgeInsets.symmetric(horizontal: wide ? 34 : 20),
     decoration: BoxDecoration(
       border: Border(bottom: BorderSide(color: line)),
@@ -1138,7 +1233,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
             weight: FontWeight.w600,
           ),
         ] else
-          Flexible(
+          Expanded(
             child: SizedBox(
               height: compact ? 30 : null,
               child: FittedBox(
@@ -1153,8 +1248,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           Container(
             width: 5,
             height: 5,
-            decoration: const BoxDecoration(
-              color: green,
+            decoration: BoxDecoration(
+              color: appAccent,
               shape: BoxShape.circle,
             ),
           ),
@@ -1163,21 +1258,10 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           const SizedBox(width: 20),
         ],
         IconButton(
-          tooltip: tr(dark ? 'Switch to light mode' : 'Switch to dark mode'),
-          onPressed: () {
-            setState(() => dark = !dark);
-            save();
-          },
-          icon: smallIcon(
-            dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-          ),
+          tooltip: tr('Open settings'),
+          onPressed: settingsDialog,
+          icon: const Icon(TemplateIcons.settings, size: 21),
         ),
-        if (!wide)
-          IconButton(
-            tooltip: tr('Settings'),
-            onPressed: settingsDialog,
-            icon: smallIcon(Icons.tune),
-          ),
         if (wide) ...[
           const SizedBox(width: 12),
           CircleAvatar(
@@ -1210,9 +1294,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               Container(
                 width: 5,
                 height: 5,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: coral,
+                  color: appAccent,
                 ),
               ),
               const SizedBox(width: 7),
@@ -1240,10 +1324,10 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                       fontWeight: FontWeight.w600,
                       color: ink,
                     ),
-                    children: const [
+                    children: [
                       TextSpan(
                         text: '.',
-                        style: TextStyle(color: coral),
+                        style: TextStyle(color: appAccent),
                       ),
                     ],
                   ),
@@ -1319,7 +1403,6 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           'How it works',
           howTo,
           icon: Icons.info_outline,
-          compact: true,
         ),
       ),
       LayoutBuilder(
@@ -1402,7 +1485,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                         child: Switch(
                           value: numbers,
                           onChanged: (v) => setState(() => numbers = v),
-                          activeTrackColor: coral,
+                          activeTrackColor: appAccent,
                         ),
                       ),
                     ),
@@ -1443,7 +1526,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(width: 14, height: 2, color: coral),
+                  Container(width: 14, height: 2, color: appAccent),
                   const SizedBox(width: 6),
                   txt('Your signal’s path', size: 9, color: muted),
                 ],
@@ -1466,8 +1549,9 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
             decoration: BoxDecoration(
-              color: dark ? bg : const Color(0xFFF7F7F2),
-              borderRadius: BorderRadius.circular(10),
+              color: bg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: line),
             ),
             child: Row(
               children: [
@@ -1492,7 +1576,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                       txt(
                         code.isEmpty ? 'Ready when you are' : symbols(code),
                         size: code.isEmpty ? 10 : 23,
-                        color: code.isEmpty ? muted : coral,
+                        color: code.isEmpty ? muted : appAccent,
                         weight: FontWeight.w600,
                         spacing: code.isEmpty ? 0 : 4,
                       ),
@@ -1513,7 +1597,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                   width: 5,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: pressed ? coral : green,
+                    color: pressed ? appAccent : appAccent,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1535,10 +1619,10 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                   width: double.infinity,
                   height: 192,
                   decoration: BoxDecoration(
-                    color: pressed ? coral : soft,
-                    borderRadius: BorderRadius.circular(13),
+                    color: pressed ? appAccent : soft,
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: coral.withValues(alpha: .35),
+                      color: appAccent.withValues(alpha: .35),
                       width: 1.5,
                     ),
                   ),
@@ -1548,7 +1632,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                       txt(
                         '·  −',
                         size: 50,
-                        color: pressed ? Colors.white : coral,
+                        color: pressed ? appAccentForeground : appAccent,
                         weight: FontWeight.w500,
                         spacing: 5,
                       ),
@@ -1596,7 +1680,6 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                   'Dot',
                   () => manual('.'),
                   icon: Icons.circle,
-                  compact: true,
                 ),
               ),
               const SizedBox(width: 7),
@@ -1605,7 +1688,6 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                   'Dash',
                   () => manual('-'),
                   icon: Icons.remove,
-                  compact: true,
                 ),
               ),
               const SizedBox(width: 7),
@@ -1615,7 +1697,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                 style: IconButton.styleFrom(
                   backgroundColor: dark ? line : bg,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 icon: Icon(Icons.check, size: 19, color: ink),
@@ -1680,7 +1762,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           child: Switch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: coral,
+            activeTrackColor: appAccent,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ),
@@ -1751,7 +1833,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                     TextSpan(
                       text: ' ▏',
                       style: TextStyle(
-                        color: coral,
+                        color: appAccent,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -1796,13 +1878,14 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   Widget rhythmTip() => Container(
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      color: dark ? const Color(0xFF29302B) : const Color(0xFFEDEEE5),
-      borderRadius: BorderRadius.circular(13),
+      color: soft,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: line),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.headphones_outlined, size: 20, color: green),
+        Icon(Icons.headphones_outlined, size: 20, color: appAccent),
         const SizedBox(width: 13),
         Expanded(
           child: Column(
@@ -1830,12 +1913,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                       ? Icons.stop_circle_outlined
                       : Icons.play_circle_outline,
                   size: 15,
-                  color: green,
+                  color: appAccent,
                 ),
                 label: txt(
                   playing ? 'Stop' : 'Listen to a signal',
                   size: 10,
-                  color: green,
+                  color: appAccent,
                 ),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
@@ -2154,18 +2237,25 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     changePracticeMode(fourChoices ? PracticeMode.choices : PracticeMode.type);
   }
 
-  Widget learnPage() => LearnOverview(
-    history: history,
-    examsPassed: examsPassed,
-    lessons: lessons,
-    dark: dark,
-    walkthroughMasteryKey: walkthroughLearnKey,
-    onPractice: (mode, characters) {
-      group = characters;
-      target = group[0];
-      switchPage(2);
-      changePracticeMode(mode);
-    },
+  Widget learnPage() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _MorseFutureCard(onStart: () => switchPage(2)),
+      const SizedBox(height: 18),
+      LearnOverview(
+        history: history,
+        examsPassed: examsPassed,
+        lessons: lessons,
+        dark: dark,
+        walkthroughMasteryKey: walkthroughLearnKey,
+        onPractice: (mode, characters) {
+          group = characters;
+          target = group[0];
+          switchPage(2);
+          changePracticeMode(mode);
+        },
+      ),
+    ],
   );
   Widget practicePage() =>
       practiceMode == PracticeMode.send ||
@@ -2305,11 +2395,11 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
           filled: true,
           fillColor: surface,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: line),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: line),
           ),
         ),
@@ -2336,10 +2426,10 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                     child: Material(
                       key: entry.key == 'A' ? walkthroughAlphabetKey : null,
                       color: selectedLetter == entry.key ? soft : surface,
-                      borderRadius: BorderRadius.circular(13),
+                      borderRadius: BorderRadius.circular(20),
                       child: InkWell(
                         key: ValueKey('alphabet-entry-${entry.key}'),
-                        borderRadius: BorderRadius.circular(13),
+                        borderRadius: BorderRadius.circular(20),
                         onTap: () {
                           setState(() => selectedLetter = entry.key);
                           listen(entry.value);
@@ -2351,9 +2441,11 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                           ),
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: selectedLetter == entry.key ? coral : line,
+                              color: selectedLetter == entry.key
+                                  ? appAccent
+                                  : line,
                             ),
-                            borderRadius: BorderRadius.circular(13),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: Column(
                             children: [
@@ -2371,7 +2463,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                                         : Icons.volume_up_outlined,
                                     size: 15,
                                     color: learned.contains(entry.key)
-                                        ? green
+                                        ? appAccent
                                         : muted,
                                   ),
                                 ],
@@ -2382,7 +2474,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                                 child: txt(
                                   symbols(entry.value),
                                   size: 22,
-                                  color: coral,
+                                  color: appAccent,
                                   spacing: 3,
                                 ),
                               ),
@@ -2466,7 +2558,12 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
       children: [
         SizedBox(
           width: 42,
-          child: txt(symbol, size: 27, color: coral, weight: FontWeight.w600),
+          child: txt(
+            symbol,
+            size: 27,
+            color: appAccent,
+            weight: FontWeight.w600,
+          ),
         ),
         Expanded(
           child: Column(
@@ -2484,156 +2581,411 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
   void settingsDialog() {
     cancelInput();
     stopPlayback();
-    VoidCallback? refreshRoute;
-    dialog(
-      'SETTINGS',
-      'Your rhythm, your rules.',
-      StatefulBuilder(
-        builder: (context, update) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    tr(
-                      appVersion.isEmpty ? 'Version …' : 'Version $appVersion',
-                    ),
-                    key: const ValueKey('app-version'),
-                    style: TextStyle(fontSize: 11, color: muted),
-                  ),
+    final sheetContext = scaffold.currentContext;
+    if (sheetContext == null) return;
+    setState(() => dialogOpen = true);
+    advanceTimer?.cancel();
+
+    showModalBottomSheet<void>(
+      context: sheetContext,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      constraints: const BoxConstraints(maxWidth: 640),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, updateSheet) {
+          final sheetTheme = _themeFor(
+            dark ? Brightness.dark : Brightness.light,
+          );
+          final scheme = sheetTheme.colorScheme;
+          final bottomInset = MediaQuery.viewPaddingOf(sheetContext).bottom;
+
+          Widget colorModeSelector() => SegmentedButton<ThemeMode>(
+            key: const ValueKey('color-mode-selector'),
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(
+                value: ThemeMode.system,
+                icon: Tooltip(
+                  message: 'Follow device appearance',
+                  child: Icon(TemplateIcons.systemAppearance),
                 ),
-                IconButton(
-                  tooltip: tr('Open-source licenses'),
-                  onPressed: () => showLicensePage(
-                    context: context,
-                    applicationName: 'morse',
-                    applicationVersion: appVersion,
-                  ),
-                  icon: const Icon(Icons.description_outlined, size: 18),
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 32,
-                    height: 32,
-                  ),
-                ),
-                IconButton(
-                  key: const ValueKey('privacy-policy-link'),
-                  tooltip: tr('Privacy policy'),
-                  onPressed: DeviceService.openPrivacyPolicy,
-                  icon: const Icon(Icons.privacy_tip_outlined, size: 18),
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 32,
-                    height: 32,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: txt('Language', size: 13, color: muted)),
-                DropdownButton<String>(
-                  key: const ValueKey('language-selector'),
-                  value: appLanguage,
-                  underline: const SizedBox.shrink(),
-                  isDense: true,
-                  items: AppStrings.languages
-                      .map(
-                        (code) =>
-                            DropdownMenuItem(value: code, child: Text(code)),
-                      )
-                      .toList(),
-                  onChanged: (code) {
-                    if (code == null) return;
-                    setState(() {
-                      appLanguage = code;
-                      AppStrings.language = code;
-                    });
-                    update(() {});
-                    refreshRoute?.call();
-                    save();
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            feedbackRow(Icons.volume_up_outlined, 'Sound', sound, (v) {
-              setState(() => sound = v);
-              if (!v) stopPlayback();
-              update(() {});
-              save();
-            }),
-            feedbackRow(
-              Icons.vibration_outlined,
-              'Vibration',
-              vibration,
-              DeviceService.supportsVibration
-                  ? (v) {
-                      setState(() => vibration = v);
-                      update(() {});
-                      buzz(60);
-                      save();
-                    }
-                  : null,
-            ),
-            feedbackRow(Icons.dark_mode_outlined, 'Dark mode', dark, (v) {
-              setState(() => dark = v);
-              update(() {});
-              save();
-            }),
-            const SizedBox(height: 20),
-            txt('INPUT PACE', size: 9, color: muted, spacing: 1.5),
-            const SizedBox(height: 12),
-            SegmentedButton<int>(
-              segments: [
-                ButtonSegment(value: 0, label: Text(tr('Relaxed'))),
-                ButtonSegment(value: 1, label: Text(tr('Natural'))),
-                ButtonSegment(value: 2, label: Text(tr('Quick'))),
-              ],
-              selected: {pace},
-              showSelectedIcon: false,
-              style: SegmentedButton.styleFrom(
-                textStyle: const TextStyle(fontSize: 11),
-                selectedBackgroundColor: soft,
-                selectedForegroundColor: coral,
               ),
-              onSelectionChanged: (v) {
-                setState(() => pace = v.first);
-                update(() {});
-                save();
-              },
-            ),
-            const SizedBox(height: 18),
-            txt(
-              'Relaxed gives you more time between signals. Settings and practice progress stay on this device.',
-              size: 11,
-              color: muted,
-              height: 1.8,
-            ),
-            if (!DeviceService.supportsVibration) ...[
-              const SizedBox(height: 12),
-              txt(
-                'Vibration is unavailable in this browser. Use the Android app or a supported browser.',
-                size: 11,
-                color: muted,
-                height: 1.8,
+              ButtonSegment(
+                value: ThemeMode.light,
+                icon: Tooltip(
+                  message: 'Use light appearance',
+                  child: Icon(TemplateIcons.lightAppearance),
+                ),
+              ),
+              ButtonSegment(
+                value: ThemeMode.dark,
+                icon: Tooltip(
+                  message: 'Use dark appearance',
+                  child: Icon(TemplateIcons.darkAppearance),
+                ),
               ),
             ],
-          ],
-        ),
+            selected: {_themeMode},
+            onSelectionChanged: (selection) {
+              setState(() => _themeMode = selection.first);
+              updateSheet(() {});
+              save();
+            },
+          );
+
+          Widget section(String title, String subtitle, Widget child) =>
+              Container(
+                margin: const EdgeInsets.only(bottom: 13),
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: scheme.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 12,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    child,
+                  ],
+                ),
+              );
+
+          Widget identityRow(String label, String value) => Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          );
+
+          return Padding(
+            padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
+            child: Theme(
+              data: sheetTheme,
+              child: Material(
+                color: scheme.surface,
+                surfaceTintColor: Colors.transparent,
+                clipBehavior: Clip.antiAlias,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(28),
+                    bottom: Radius.circular(28),
+                  ),
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight:
+                        (MediaQuery.sizeOf(sheetContext).height - bottomInset) *
+                        .9,
+                  ),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: scheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 14, 12, 12),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Settings',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -.6,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    tr('Tune the look and feel of your app.'),
+                                    style: TextStyle(
+                                      color: scheme.onSurfaceVariant,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: tr('Close settings'),
+                              onPressed: () => Navigator.pop(sheetContext),
+                              icon: const Icon(TemplateIcons.close),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Divider(height: 1, color: scheme.outlineVariant),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 560),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  section(
+                                    'Color mode',
+                                    'Follow the device or choose a theme.',
+                                    colorModeSelector(),
+                                  ),
+                                  section(
+                                    'App identity',
+                                    'App details and links.',
+                                    Column(
+                                      children: [
+                                        identityRow('Display name', 'Morse'),
+                                        const SizedBox(height: 8),
+                                        identityRow(
+                                          'Package ID',
+                                          'com.morse_code',
+                                        ),
+                                        const SizedBox(height: 8),
+                                        identityRow(
+                                          'Version',
+                                          appVersion.isEmpty ? '—' : appVersion,
+                                        ),
+                                        const SizedBox(height: 14),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: OutlinedButton.icon(
+                                                key: const ValueKey(
+                                                  'privacy-policy-link',
+                                                ),
+                                                onPressed: DeviceService
+                                                    .openPrivacyPolicy,
+                                                icon: const Icon(
+                                                  TemplateIcons.privacy,
+                                                  size: 18,
+                                                ),
+                                                label: const Text(
+                                                  'Privacy policy',
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            IconButton(
+                                              tooltip: tr(
+                                                'Open-source licenses',
+                                              ),
+                                              onPressed: () => showLicensePage(
+                                                context: sheetContext,
+                                                applicationName: 'Morse',
+                                                applicationVersion: appVersion,
+                                                applicationLegalese:
+                                                    'Material Icons by Google. CC BY 4.0: '
+                                                    'https://creativecommons.org/licenses/by/4.0/',
+                                              ),
+                                              icon: const Icon(
+                                                TemplateIcons.licenses,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  section(
+                                    'Practice preferences',
+                                    'Choose how Morse signals feel and sound.',
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(tr('Language')),
+                                            ),
+                                            DropdownButton<String>(
+                                              key: const ValueKey(
+                                                'language-selector',
+                                              ),
+                                              value: appLanguage,
+                                              underline:
+                                                  const SizedBox.shrink(),
+                                              isDense: true,
+                                              items: AppStrings.languages
+                                                  .map(
+                                                    (code) => DropdownMenuItem(
+                                                      value: code,
+                                                      child: Text(code),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                              onChanged: (code) {
+                                                if (code == null) return;
+                                                setState(() {
+                                                  appLanguage = code;
+                                                  AppStrings.language = code;
+                                                });
+                                                updateSheet(() {});
+                                                save();
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Input pace',
+                                          style: TextStyle(
+                                            color: scheme.onSurfaceVariant,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        SegmentedButton<int>(
+                                          style: ButtonStyle(
+                                            padding: WidgetStatePropertyAll(
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                              ),
+                                            ),
+                                          ),
+                                          segments: [
+                                            ButtonSegment(
+                                              value: 0,
+                                              label: Text(tr('Relaxed')),
+                                            ),
+                                            ButtonSegment(
+                                              value: 1,
+                                              label: Text(tr('Natural')),
+                                            ),
+                                            ButtonSegment(
+                                              value: 2,
+                                              label: Text(tr('Quick')),
+                                            ),
+                                          ],
+                                          selected: {pace},
+                                          showSelectedIcon: false,
+                                          onSelectionChanged: (value) {
+                                            setState(() => pace = value.first);
+                                            updateSheet(() {});
+                                            save();
+                                          },
+                                        ),
+                                        const SizedBox(height: 10),
+                                        feedbackRow(
+                                          Icons.volume_up_outlined,
+                                          'Sound',
+                                          sound,
+                                          (value) {
+                                            setState(() => sound = value);
+                                            if (!value) stopPlayback();
+                                            updateSheet(() {});
+                                            save();
+                                          },
+                                        ),
+                                        feedbackRow(
+                                          Icons.vibration_outlined,
+                                          'Vibration',
+                                          vibration,
+                                          DeviceService.supportsVibration
+                                              ? (value) {
+                                                  setState(
+                                                    () => vibration = value,
+                                                  );
+                                                  updateSheet(() {});
+                                                  buzz(60);
+                                                  save();
+                                                }
+                                              : null,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                        child: Row(
+                          children: [
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(sheetContext);
+                                Future<void>.delayed(
+                                  const Duration(milliseconds: 220),
+                                  () {
+                                    if (mounted) startWalkthrough();
+                                  },
+                                );
+                              },
+                              icon: const Icon(Icons.help_outline_rounded),
+                              label: Text(tr('Help')),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
-      onHelp: (dialogContext) {
-        Navigator.pop(dialogContext);
-        Future<void>.delayed(const Duration(milliseconds: 220), () {
-          if (mounted) startWalkthrough();
-        });
-      },
-      onRefresh: (refresh) => refreshRoute = refresh,
-    );
+    ).whenComplete(() {
+      if (!mounted) return;
+      setState(() => dialogOpen = false);
+      scheduleAdvance();
+    });
   }
 
   void startWalkthrough() {
@@ -2787,8 +3139,8 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                         height: 62,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: coral, width: 3),
-                          color: coral.withValues(alpha: .16),
+                          border: Border.all(color: appAccent, width: 3),
+                          color: appAccent.withValues(alpha: .16),
                         ),
                       ),
                     ),
@@ -2820,7 +3172,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                     padding: const EdgeInsets.fromLTRB(20, 17, 20, 18),
                     decoration: BoxDecoration(
                       color: surface,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: const [
                         BoxShadow(
                           color: Colors.black45,
@@ -2847,7 +3199,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                               child: txt(
                                 '${step + 1} / ${_walkthroughStops.length}',
                                 size: 10,
-                                color: coral,
+                                color: appAccent,
                                 weight: FontWeight.w700,
                                 decoration: TextDecoration.none,
                               ),
@@ -2909,7 +3261,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     bool enabled,
     VoidCallback onPressed,
   ) => Material(
-    color: enabled ? coral : const Color(0xFF59615E),
+    color: enabled ? appAccent : const Color(0xFF59615E),
     shape: const CircleBorder(),
     elevation: 5,
     child: IconButton(
@@ -2998,8 +3350,6 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                           () => Navigator.pop(context),
                           icon: Icons.check,
                           primary: true,
-                          compact: true,
-                          compactPadding: 6,
                         ),
                       ],
                     ),
@@ -3062,4 +3412,115 @@ class _WalkthroughDimmer extends CustomPainter {
   @override
   bool shouldRepaint(covariant _WalkthroughDimmer oldDelegate) =>
       oldDelegate.target != target || oldDelegate.color != color;
+}
+
+class _MorseFutureCard extends StatelessWidget {
+  const _MorseFutureCard({required this.onStart});
+
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final base = scheme.surfaceContainerLow;
+    final glow = Color.lerp(base, scheme.primary, 0.2)!;
+    final orbit = Color.lerp(base, scheme.tertiary, 0.14)!;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [glow, base, orbit],
+            stops: const [0, 0.58, 1],
+          ),
+          border: Border.all(color: scheme.primary.withValues(alpha: 0.32)),
+          borderRadius: BorderRadius.circular(26),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -44,
+              top: -55,
+              child: Container(
+                width: 170,
+                height: 170,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: scheme.primary.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -13,
+              top: -24,
+              child: Container(
+                width: 136,
+                height: 136,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: scheme.tertiary.withValues(alpha: 0.2),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.surface.withValues(alpha: 0.78),
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: Text(
+                      tr('MORSE'),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: scheme.primary,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    tr('One signal at a time.'),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.65,
+                      height: 1.12,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Text(
+                    tr('Build Morse recognition at a steady, comfortable pace.'),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed: onStart,
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 19),
+                    label: Text(tr('Start a practice')),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

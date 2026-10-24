@@ -3,9 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'morse.dart';
+import 'app_palette.dart';
 import 'app_strings.dart';
-
-const _accent = Color(0xFFE77860);
 
 /// A fitted diagram: its bounds never depend on the currently selected path.
 class MorseTree extends StatelessWidget {
@@ -122,17 +121,15 @@ class MorseTree extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: current
-                              ? _accent
+                              ? morseAccentFor(dark)
                               : active
-                              ? (dark
-                                    ? const Color(0xFF503D32)
-                                    : const Color(0xFFFCE4D7))
+                              ? morseAccentSoftFor(dark)
                               : dark
                               ? const Color(0xFF26312B)
                               : const Color(0xFFF2F3E9),
                           border: Border.all(
                             color: active
-                                ? _accent
+                                ? morseAccentFor(dark)
                                 : dark
                                 ? const Color(0xFF7D8A70)
                                 : const Color(0xFFBCC6A8),
@@ -153,7 +150,7 @@ class MorseTree extends StatelessWidget {
                                 : math.min(13, size * .69),
                             fontWeight: FontWeight.w700,
                             color: current
-                                ? Colors.white
+                                ? morseAccentForegroundFor(dark)
                                 : dark
                                 ? const Color(0xFFE0E8D8)
                                 : const Color(0xFF435331),
@@ -195,7 +192,7 @@ class TreePainter extends CustomPainter {
       final active = path.isNotEmpty && path.startsWith(node.code);
       final paint = Paint()
         ..color = active
-            ? _accent
+            ? morseAccentFor(dark)
             : dark
             ? const Color(0xFF6E7E60)
             : const Color(0xFFBAC5A6)

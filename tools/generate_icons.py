@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 RES = 'android/app/src/main/res'
-CORAL = (231, 120, 96)
+ORANGE = (165, 99, 0)
 MARK = 'M42,54 A8,8 0,1 1,26,54 A8,8 0,1 1,42,54 Z M57,46 L74,46 A8,8 0,0 1,74,62 L57,62 A8,8 0,0 1,57,46 Z'
 
 
@@ -39,7 +39,7 @@ def png(size, rounded):
                 qx, qy = abs(x - 54) - 30, abs(y - 54) - 30
                 distance = math.hypot(max(qx, 0), max(qy, 0)) + min(max(qx, qy), 0) - 24
                 alpha = max(0, min(1, .5 - distance * scale))
-            pixels.extend(round(c + (255 - c) * white) for c in CORAL)
+            pixels.extend(round(c + (255 - c) * white) for c in ORANGE)
             pixels.append(round(alpha * 255))
     header = struct.pack('!IIBBBBB', size, size, 8, 6, 0, 0, 0)
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', header) + chunk(b'IDAT', zlib.compress(pixels, 9)) + chunk(b'IEND', b'')
@@ -54,7 +54,7 @@ def outputs():
         files[f'web/icons/Icon-maskable-{size}.png'] = png(size, False)
     files['web/favicon.png'] = png(32, True)
     files['assets/branding/app-icon.svg'] = f'''<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108" role="img" aria-label="morse dot and dash">
-  <rect width="108" height="108" rx="24" fill="#E77860"/>
+  <rect width="108" height="108" rx="24" fill="#A56300"/>
   <path fill="#FFFFFF" d="{MARK}"/>
 </svg>
 '''.encode()
@@ -67,7 +67,7 @@ def outputs():
 '''.encode()
     files[f'{RES}/values/ic_launcher_colors.xml'] = b'''<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#E77860</color>
+    <color name="ic_launcher_background">#A56300</color>
 </resources>
 '''
     for version in [26, 33]:

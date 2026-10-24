@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dit_morse/main.dart';
+import 'package:dit_morse/template_icons.dart';
 
 void main() {
   Future<void> captureScreens(
@@ -22,7 +23,18 @@ void main() {
       const RepaintBoundary(key: rootKey, child: DitApp()),
     );
     await tester.pump(const Duration(milliseconds: 600));
-    await tester.tap(find.byTooltip('Switch to dark mode'));
+    await tester.tap(find.byTooltip('Open settings'));
+    await tester.pump(const Duration(milliseconds: 400));
+    final selector = find.byKey(const ValueKey('color-mode-selector'));
+    await tester.ensureVisible(selector);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byIcon(TemplateIcons.darkAppearance));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      tester.widget<SegmentedButton<ThemeMode>>(selector).selected,
+      {ThemeMode.dark},
+    );
+    await tester.tap(find.byTooltip('Close settings'));
     await tester.pump(const Duration(milliseconds: 500));
 
     Future<void> save(String page) async {

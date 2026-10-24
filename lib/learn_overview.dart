@@ -4,6 +4,7 @@ import 'morse.dart';
 import 'practice_controls.dart';
 import 'progress_history.dart';
 import 'practice_content.dart';
+import 'app_palette.dart';
 import 'app_strings.dart';
 
 class LearnOverview extends StatefulWidget {
@@ -30,13 +31,14 @@ class _LearnOverviewState extends State<LearnOverview> {
   ProgressPeriod _period = ProgressPeriod.all;
   PracticeMode? _mode;
   String? _characters;
-  static const accent = Color(0xFFE77860), green = Color(0xFF648D78);
+  static const green = Color(0xFF648D78);
+  Color get accent => morseAccentFor(widget.dark);
   Color get ink =>
-      widget.dark ? const Color(0xFFF0F1EC) : const Color(0xFF26302F);
+      widget.dark ? const Color(0xFFF1F5FA) : const Color(0xFF172235);
   Color get muted =>
-      widget.dark ? const Color(0xFF9AA4A0) : const Color(0xFF747E77);
+      widget.dark ? const Color(0xFFB6C3D4) : const Color(0xFF56657B);
   Color get line =>
-      widget.dark ? const Color(0xFF353D3B) : const Color(0xFFE4E7DC);
+      widget.dark ? const Color(0xFF35465C) : const Color(0xFFDDE5EF);
 
   int _level(String item, {String? kind}) {
     final outcomes = kind == null
@@ -81,7 +83,7 @@ class _LearnOverviewState extends State<LearnOverview> {
   Widget card(Widget child) => SizedBox(
     width: double.infinity,
     child: Material(
-      color: widget.dark ? const Color(0xFF202627) : Colors.white,
+      color: widget.dark ? const Color(0xFF131D2D) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: line),
@@ -552,7 +554,7 @@ class _LearnOverviewState extends State<LearnOverview> {
                     width: 30,
                     child: Text(
                       row.$1,
-                      style: const TextStyle(fontSize: 18, color: accent),
+                      style: TextStyle(fontSize: 18, color: accent),
                     ),
                   ),
                   Expanded(

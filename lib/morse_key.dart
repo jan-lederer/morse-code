@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app_palette.dart';
 import 'app_strings.dart';
 
 /// Shared touch key for the tree and practice views.
@@ -17,10 +18,10 @@ class MorseKey extends StatelessWidget {
     required this.onUp,
     required this.onCancel,
   });
-  static const accent = Color(0xFFE77860);
-  Color get ink => dark ? const Color(0xFFF0F1EC) : const Color(0xFF26302F);
-  Color get muted => dark ? const Color(0xFF9AA4A0) : const Color(0xFF747E77);
-  Color get soft => dark ? const Color(0xFF322B28) : const Color(0xFFFFF1EB);
+  Color get accent => morseAccentFor(dark);
+  Color get ink => dark ? const Color(0xFFF1F5FA) : const Color(0xFF172235);
+  Color get muted => dark ? const Color(0xFFB6C3D4) : const Color(0xFF56657B);
+  Color get soft => morseAccentSoftFor(dark);
   Text label(
     String text, {
     double size = 12,
@@ -58,7 +59,7 @@ class MorseKey extends StatelessWidget {
                 label(
                   pressed ? (holdDash ? '−' : '·') : '· −',
                   size: bounds.maxHeight < 65 ? 28 : 40,
-                  color: pressed ? Colors.white : accent,
+                  color: pressed ? morseAccentForegroundFor(dark) : accent,
                   weight: FontWeight.w500,
                 ),
                 const SizedBox(width: 17),
@@ -72,7 +73,7 @@ class MorseKey extends StatelessWidget {
                             ? (holdDash ? 'Keep holding…' : 'Make your signal')
                             : 'Tap. Hold. Connect.',
                         size: 13,
-                        color: pressed ? Colors.white : ink,
+                        color: pressed ? morseAccentForegroundFor(dark) : ink,
                         weight: FontWeight.w600,
                       ),
                       if (bounds.maxHeight >= 50) ...[
@@ -80,7 +81,10 @@ class MorseKey extends StatelessWidget {
                         label(
                           'Tap · dot   /   Hold · dash',
                           size: 10,
-                          color: pressed ? Colors.white70 : muted,
+                          color: pressed
+                              ? morseAccentForegroundFor(dark)
+                                    .withValues(alpha: .7)
+                              : muted,
                         ),
                       ],
                     ],
