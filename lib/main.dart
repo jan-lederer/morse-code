@@ -969,7 +969,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
                 body: SafeArea(
                   child: Row(
                     children: [
-                      if (wide) sidebar(),
+                      if (wide) sidebar(Theme.of(context).colorScheme),
                       Expanded(
                         child: Column(
                           children: [
@@ -1073,8 +1073,7 @@ class _DitAppState extends State<DitApp> with WidgetsBindingObserver {
     );
   }
 
-  Widget sidebar() {
-    final scheme = Theme.of(context).colorScheme;
+  Widget sidebar(ColorScheme scheme) {
     return Container(
       width: 230,
       decoration: BoxDecoration(
@@ -3513,7 +3512,17 @@ class _MorseFutureCard extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: onStart,
                     icon: const Icon(Icons.arrow_forward_rounded, size: 19),
-                    label: Text(tr('Start a practice')),
+                    label: Text(
+                      tr('Start a practice'),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onPrimary,
+                      ),
+                    ),
                   ),
                 ],
               ),

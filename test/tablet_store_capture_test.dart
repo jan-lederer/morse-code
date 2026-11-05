@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dit_morse/main.dart';
 import 'package:dit_morse/template_icons.dart';
@@ -18,6 +20,7 @@ void main() {
     tester.view.devicePixelRatio = pixelRatio;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.runAsync(() => _loadSdkFonts(tester));
     const rootKey = ValueKey('tablet-capture-root');
     await tester.pumpWidget(
       const RepaintBoundary(key: rootKey, child: DitApp()),
@@ -40,15 +43,21 @@ void main() {
     Future<void> save(String page) async {
       await tester.pump(const Duration(milliseconds: 250));
       expect(tester.takeException(), isNull, reason: '$device $page layout');
-      final boundary = tester.renderObject<RenderRepaintBoundary>(
-        find.byKey(rootKey),
-      );
-      final image = await boundary.toImage(pixelRatio: pixelRatio);
-      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-      final target = File('build/deliverables/tablets/$device-$page.png');
-      await target.parent.create(recursive: true);
-      await target.writeAsBytes(bytes!.buffer.asUint8List(), flush: true);
-      image.dispose();
+      await tester.runAsync(() async {
+        final boundary = tester.renderObject<RenderRepaintBoundary>(
+          find.byKey(rootKey),
+        );
+        final image = await boundary.toImage(pixelRatio: pixelRatio);
+        try {
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          final target = File('build/deliverables/tablets/$device-$page.png');
+          await target.parent.create(recursive: true);
+          await target.writeAsBytes(bytes!.buffer.asUint8List(), flush: true);
+          expect(await target.length(), greaterThan(10000));
+        } finally {
+          image.dispose();
+        }
+      });
     }
 
     await save('morse-tree');
@@ -87,4 +96,35 @@ void main() {
       pixelRatio: 2,
     );
   });
+}
+
+Future<void> _loadSdkFonts(WidgetTester tester) async {
+  final packages = jsonDecode(
+    File('.dart_tool/package_config.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
+  final entries = packages['packages'] as List<dynamic>;
+  final flutterPackage = entries.firstWhere((p) => p['name'] == 'flutter');
+  final sdk = Directory.fromUri(Uri.parse(flutterPackage['rootUri'] as String))
+      .parent
+      .parent
+      .path;
+  final root = '$sdk/bin/cache/artifacts/material_fonts';
+  final roboto = FontLoader('Roboto')
+    ..addFont(
+      Future.value(
+        ByteData.sublistView(
+          await File('$root/Roboto-Regular.ttf').readAsBytes(),
+        ),
+      ),
+    );
+  await roboto.load();
+  final icons = FontLoader('MaterialIcons')
+    ..addFont(
+      Future.value(
+        ByteData.sublistView(
+          await File('$root/MaterialIcons-Regular.otf').readAsBytes(),
+        ),
+      ),
+    );
+  await icons.load();
 }
