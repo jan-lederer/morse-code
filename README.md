@@ -46,7 +46,7 @@ flutter build web --release --no-web-resources-cdn
 ```
 
 The Android application ID is `com.morse_code`. Its version name comes from
-`pubspec.yaml` (currently `1.8.1`); Android versionCode is `59`. Build both
+`pubspec.yaml` (currently `1.8.1`); Android versionCode is `60`. Build both
 Android release formats with:
 
 ```sh
